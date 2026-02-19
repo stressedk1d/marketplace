@@ -1,72 +1,79 @@
-# SAVEPOINT Marketplace - быстрый запуск
+# SAVEPOINT Marketplace - quick start
 
-## Что уже сделано
-- Backend модульный:
-  - `backend/routers/auth.py`
-  - `backend/routers/catalog.py`
-  - `backend/routers/cart.py`
-  - `backend/routers/orders.py`
-  - `backend/routers/ai_search.py`
-- Реализованы заказы:
-  - `POST /orders/checkout`
-  - `GET /orders/my`
-- Frontend:
-  - оформление заказа из корзины
-  - страница заказов
-  - ссылка "Заказы" в header
-- Добавлена база под миграции Alembic:
-  - `backend/alembic.ini`
-  - `backend/alembic/env.py`
-  - `backend/alembic/versions/20260219_0001_initial_schema.py`
+## Current state
+- Backend: auth, catalog, cart, orders, ai photo search.
+- Frontend: register/login, catalog, cart, checkout, orders page.
+- DB migrations: Alembic is configured and has initial revision.
+- AI: CLIP model is loaded lazily on first `/ai/search` request.
 
-## Почему были ошибки в PowerShell
-- `Activate.ps1` и `npm.ps1` блокируются Execution Policy.
-- Поэтому запуск сделан через `.cmd` скрипты (без активации venv и без `npm.ps1`).
+## One-time setup
+Run from project root `d:\Diplom\my_marketplace`:
 
-## Новый способ запуска (рекомендуется)
-Запускать из корня проекта `d:\Diplom\my_marketplace`.
+```bat
+scripts\setup_backend.cmd
+scripts\setup_frontend.cmd
+```
 
-### 1) Подготовка backend (один раз)
-`scripts\setup_backend.cmd`
-
-Что делает:
-- создает `backend\.env` из `.env.example` (если нет),
-- создает `backend\venv312`,
-- ставит зависимости из `backend\requirements.txt`.
-
-### 2) Подготовка frontend (один раз)
-`scripts\setup_frontend.cmd`
-
-### 3) Запуск backend
-`scripts\run_backend.cmd`
-
-Backend будет доступен на:
-- `http://127.0.0.1:8000`
-
-### 4) Запуск frontend
-`scripts\run_frontend.cmd`
-
-Frontend будет доступен на:
-- `http://localhost:3000`
-
-## Важные env-переменные backend
-Файл: `backend\.env`
-
-Минимум заполнить:
+## Backend env
+Edit `backend\.env` and set at minimum:
 - `SECRET_KEY`
 - `TELEGRAM_BOT_TOKEN`
 
-Дополнительно:
+You can keep SQLite for local dev:
 - `DATABASE_URL=sqlite:///./sql_app.db`
-- `AUTO_CREATE_SCHEMA=true` (на dev можно оставить так)
 
-## Alembic (когда будешь переходить на миграции полностью)
-- для новой БД:
-  1. `AUTO_CREATE_SCHEMA=false`
-  2. `backend\venv312\Scripts\python.exe -m alembic upgrade head`
-- для уже существующей БД от `create_all`:
-  - `backend\venv312\Scripts\python.exe -m alembic stamp head`
+For PostgreSQL use template:
+- `backend\.env.postgres.example`
 
-## Следующий шаг по проекту
-1. Перевести `DATABASE_URL` на PostgreSQL.
-2. Добавить базовые тесты для `auth/cart/orders`.
+## Migrations
+Use one of these commands from project root:
+
+- Fresh DB or normal migration flow:
+```bat
+scripts\migrate_backend.cmd
+```
+
+- Existing DB created earlier outside Alembic (only once):
+```bat
+scripts\stamp_backend.cmd
+```
+
+## Run
+Terminal 1 (backend):
+```bat
+scripts\run_backend.cmd
+```
+Backend URL: `http://127.0.0.1:8000`
+Docs: `http://127.0.0.1:8000/docs`
+
+Terminal 2 (frontend):
+```bat
+scripts\run_frontend.cmd
+```
+Frontend URL: `http://localhost:3000`
+
+## Telegram bot (optional manual run)
+Use venv python, not system python:
+
+```bat
+cd backend
+venv312\Scripts\python.exe bot.py
+```
+
+## Tests
+Run backend tests:
+
+```bat
+cd backend
+venv312\Scripts\python.exe -m pytest -q
+```
+
+## Known runtime notes
+- First `/ai/search` call can be slow because CLIP model is loaded from cache.
+- Startup logs are printed in the terminal where backend is running.
+
+## Next day plan
+1. Switch local DB to PostgreSQL and run Alembic there.
+2. Add admin CRUD for products/categories.
+3. Add seller role and seller-scoped product management.
+4. Improve AI search quality and add background embedding job.
