@@ -10,7 +10,7 @@ const navItems = [
   { label: "Одежда", href: "/catalog" },
   { label: "Обувь", href: "/catalog" },
   { label: "Аксессуары", href: "/catalog" },
-  { label: "Знаменитости", href: "/catalog" },
+  { label: "Знаменитости", href: "/celebrities" },
   { label: "Бренды", href: "/catalog" },
 ];
 

@@ -11,15 +11,15 @@
 
 Бэкенд:
   - Python 3.12
-  - FastAPI          — REST API
-  - SQLAlchemy       — ORM (sync)
-  - Alembic          — миграции БД
-  - Pydantic v2      — валидация данных
-  - PyJWT + bcrypt   — аутентификация
-  - httpx            — асинхронные HTTP-запросы (ИИК-поиск)
-  - sentence-transformers (CLIP) — поиск по фото
-  - SQLite (dev) / PostgreSQL (prod)
-  - pytest           — тесты
+  - FastAPI               — REST API
+  - SQLAlchemy (sync)     — ORM
+  - Alembic               — миграции БД
+  - Pydantic v2           — валидация данных
+  - PyJWT + bcrypt        — аутентификация (JWT)
+  - httpx                 — асинхронные HTTP-запросы (ИИ-поиск)
+  - sentence-transformers — CLIP-модель для поиска по фото
+  - SQLite (dev)
+  - pytest                — тесты
 
 Фронтенд:
   - Next.js 14 (App Router)
@@ -30,9 +30,9 @@
 АРХИТЕКТУРА БЭКЕНДА
 --------------------------------------------------------------------------------
 
-  routers/   — HTTP-слой (тонкие роутеры, только приём запроса и возврат ответа)
-  services/  — бизнес-логика (auth, cart, orders, catalog)
-  models.py  — SQLAlchemy модели
+  routers/   — HTTP-слой (тонкие роутеры: приём запроса → вызов сервиса → ответ)
+  services/  — бизнес-логика (auth_service, cart_service, orders_service, catalog_service)
+  models.py  — SQLAlchemy модели (User, Product, Category, CartItem, Order, OrderItem)
   schemas.py — Pydantic request/response схемы
   deps.py    — FastAPI зависимости (get_current_user)
   utils.py   — JWT, хэширование паролей
@@ -44,11 +44,13 @@
 
   - Регистрация и вход (JWT-аутентификация)
   - Каталог товаров с текстовым поиском
-  - Страница товара
-  - Корзина (добавить, удалить, просмотреть)
-  - Оформление заказа и история заказов
+  - Страница товара с галереей изображений (лайтбокс)
+  - Корзина (добавить, удалить, оформить заказ)
+  - История заказов
+  - Страница аккаунта
+  - Страница знаменитостей (Recrent) с фильтрацией товаров
   - ИИ-поиск по фото (CLIP, sentence-transformers)
-  - Демо-каталог: коллекция Recrent (9 товаров с изображениями)
+  - Демо-каталог: коллекция Recrent (9 товаров)
 
 --------------------------------------------------------------------------------
 ЛОКАЛЬНЫЙ ЗАПУСК
@@ -57,27 +59,23 @@
 1. БЭКЕНД
 ----------
 
-  # Установка зависимостей
   cd backend
   python -m venv venv312
-  venv312\Scripts\activate          # Windows
+  venv312\Scripts\activate
   pip install -r requirements.txt
 
   # Настройка окружения
   cp .env.example .env
-  # Отредактируй .env при необходимости (SECRET_KEY, DATABASE_URL и т.д.)
 
   # Применить миграции
   alembic upgrade head
-  # (если БД уже существует без alembic_version — сначала: alembic stamp head)
 
-  # Запуск сервера
+  # Запуск
   uvicorn main:app --reload
-  # API доступно на http://127.0.0.1:8000
-  # Swagger UI:  http://127.0.0.1:8000/docs
+  # API:     http://127.0.0.1:8000
+  # Swagger: http://127.0.0.1:8000/docs
 
-  Или через скрипт:
-  scripts\run_backend.cmd
+  Или: scripts\run_backend.cmd
 
 2. ФРОНТЕНД
 -----------
@@ -85,16 +83,14 @@
   cd frontend
   npm install
   npm run dev
-  # Доступно на http://localhost:3000
+  # http://localhost:3000
 
-  Или через скрипт:
-  scripts\run_frontend.cmd
+  Или: scripts\run_frontend.cmd
 
 3. ДЕМО-ДАННЫЕ
 --------------
 
-  Демо-каталог (9 товаров коллекции Recrent) добавляется автоматически
-  при первом запуске бэкенда через seed_recrent.py.
+  9 товаров коллекции Recrent добавляются автоматически при первом запуске.
 
 --------------------------------------------------------------------------------
 ТЕСТЫ
@@ -104,39 +100,39 @@
   venv312\Scripts\python.exe -m pytest tests/ -v
 
   Покрытие:
-  - AuthService:    регистрация, дубликат email, логин, неверный пароль
-  - CartService:    добавление, получение, удаление, несуществующий элемент
-  - OrdersService:  оформление заказа, очистка корзины, пустая корзина
-  - CatalogService: список товаров, поиск по имени/описанию, поиск по ID
+  - AuthService    — регистрация, дубликат email, логин, неверный пароль
+  - CartService    — добавление, получение, удаление
+  - OrdersService  — оформление заказа, пустая корзина
+  - CatalogService — список, поиск, получение по ID
 
 --------------------------------------------------------------------------------
 API ЭНДПОИНТЫ
 --------------------------------------------------------------------------------
 
-  POST /auth/register       — регистрация
-  POST /auth/login          — вход, возвращает JWT токен
+  POST   /auth/register       — регистрация
+  POST   /auth/login          — вход (возвращает JWT)
 
-  GET  /products            — список товаров (поддерживает ?search=)
-  GET  /products/{id}       — один товар по ID
+  GET    /products            — список товаров (?search= поддерживается)
+  GET    /products/{id}       — товар по ID
 
-  POST /cart/add            — добавить в корзину (auth)
-  GET  /cart                — содержимое корзины (auth)
-  DELETE /cart/{id}         — удалить из корзины (auth)
+  POST   /cart/add            — добавить в корзину (auth)
+  GET    /cart                — корзина (auth)
+  DELETE /cart/{id}           — удалить из корзины (auth)
 
-  POST /orders/checkout     — оформить заказ из корзины (auth)
-  GET  /orders/my           — история заказов (auth)
+  POST   /orders/checkout     — оформить заказ (auth)
+  GET    /orders/my           — история заказов (auth)
 
-  POST /ai/search           — поиск по фото (multipart/form-data)
+  POST   /ai/search           — поиск по фото (multipart/form-data)
 
 --------------------------------------------------------------------------------
 ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ (.env)
 --------------------------------------------------------------------------------
 
-  SECRET_KEY                — секрет для JWT
-  JWT_ALGORITHM             — алгоритм (HS256)
-  ACCESS_TOKEN_EXPIRE_MINUTES — время жизни токена (30)
-  DATABASE_URL              — sqlite:///./sql_app.db или postgresql://...
-  CORS_ORIGINS              — http://localhost:3000
-  FRONTEND_BASE_URL         — http://127.0.0.1:3000 (для ИИ-поиска)
+  SECRET_KEY                    — секрет для JWT
+  JWT_ALGORITHM                 — HS256
+  ACCESS_TOKEN_EXPIRE_MINUTES   — 30
+  DATABASE_URL                  — sqlite:///./sql_app.db
+  CORS_ORIGINS                  — http://localhost:3000,http://127.0.0.1:3000
+  FRONTEND_BASE_URL             — http://127.0.0.1:3000
 
 ================================================================================
