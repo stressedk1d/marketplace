@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import UTC, datetime
 
 from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, PickleType, String
 from sqlalchemy.orm import relationship
@@ -13,8 +13,8 @@ class User(Base):
     password_hash = Column(String)
     full_name = Column(String)
     is_verified = Column(Boolean, default=False)
-    telegram_id = Column(String)
-    verification_code = Column(String)
+    verification_code = Column(String, nullable=True)
+    code_expires_at = Column(DateTime, nullable=True)
 
     cart_items = relationship("CartItem", back_populates="user")
     orders = relationship("Order", back_populates="user")
@@ -59,7 +59,7 @@ class Order(Base):
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     status = Column(String, default="created")
     total_amount = Column(Float, default=0.0)
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")

@@ -1,85 +1,142 @@
-# SAVEPOINT Marketplace - quick start
+================================================================================
+  VOGUEWAY — README
+================================================================================
 
-## Current state
-- Backend: auth, catalog, cart, orders, ai photo search.
-- Frontend: register/login, catalog, cart, checkout, orders page.
-- Demo catalog: мерч Recrent — картинки в `frontend\public\images\products\`, сидирование при старте API (`backend\seed_recrent.py`). Для ИИ-поиска по локальным картинкам задай `FRONTEND_BASE_URL` (см. `backend\.env.example`).
-- DB migrations: Alembic is configured and has initial revision.
-- AI: CLIP model is loaded lazily on first `/ai/search` request.
+Учебный проект: маркетплейс одежды с каталогом, корзиной, заказами и ИИ-поиском.
+Разработан как дипломная работа.
 
-## One-time setup
-Run from project root `d:\Diplom\my_marketplace`:
+--------------------------------------------------------------------------------
+СТЕК ТЕХНОЛОГИЙ
+--------------------------------------------------------------------------------
 
-```bat
-scripts\setup_backend.cmd
-scripts\setup_frontend.cmd
-```
+Бэкенд:
+  - Python 3.12
+  - FastAPI          — REST API
+  - SQLAlchemy       — ORM (sync)
+  - Alembic          — миграции БД
+  - Pydantic v2      — валидация данных
+  - PyJWT + bcrypt   — аутентификация
+  - httpx            — асинхронные HTTP-запросы (ИИК-поиск)
+  - sentence-transformers (CLIP) — поиск по фото
+  - SQLite (dev) / PostgreSQL (prod)
+  - pytest           — тесты
 
-## Backend env
-Edit `backend\.env` and set at minimum:
-- `SECRET_KEY`
-- `TELEGRAM_BOT_TOKEN`
+Фронтенд:
+  - Next.js 14 (App Router)
+  - TypeScript
+  - Tailwind CSS
 
-You can keep SQLite for local dev:
-- `DATABASE_URL=sqlite:///./sql_app.db`
+--------------------------------------------------------------------------------
+АРХИТЕКТУРА БЭКЕНДА
+--------------------------------------------------------------------------------
 
-For PostgreSQL use template:
-- `backend\.env.postgres.example`
+  routers/   — HTTP-слой (тонкие роутеры, только приём запроса и возврат ответа)
+  services/  — бизнес-логика (auth, cart, orders, catalog)
+  models.py  — SQLAlchemy модели
+  schemas.py — Pydantic request/response схемы
+  deps.py    — FastAPI зависимости (get_current_user)
+  utils.py   — JWT, хэширование паролей
+  alembic/   — миграции БД
 
-## Migrations
-Use one of these commands from project root:
+--------------------------------------------------------------------------------
+ФУНКЦИОНАЛЬНОСТЬ
+--------------------------------------------------------------------------------
 
-- Fresh DB or normal migration flow:
-```bat
-scripts\migrate_backend.cmd
-```
+  - Регистрация и вход (JWT-аутентификация)
+  - Каталог товаров с текстовым поиском
+  - Страница товара
+  - Корзина (добавить, удалить, просмотреть)
+  - Оформление заказа и история заказов
+  - ИИ-поиск по фото (CLIP, sentence-transformers)
+  - Демо-каталог: коллекция Recrent (9 товаров с изображениями)
 
-- Existing DB created earlier outside Alembic (only once):
-```bat
-scripts\stamp_backend.cmd
-```
+--------------------------------------------------------------------------------
+ЛОКАЛЬНЫЙ ЗАПУСК
+--------------------------------------------------------------------------------
 
-## Run
-Terminal 1 (backend):
-```bat
-scripts\run_backend.cmd
-```
-Backend URL: `http://127.0.0.1:8000`
-Docs: `http://127.0.0.1:8000/docs`
+1. БЭКЕНД
+----------
 
-Terminal 2 (frontend):
-```bat
-scripts\run_frontend.cmd
-```
-Frontend URL: `http://localhost:3000`
+  # Установка зависимостей
+  cd backend
+  python -m venv venv312
+  venv312\Scripts\activate          # Windows
+  pip install -r requirements.txt
 
-## Telegram bot (optional manual run)
-Use venv python, not system python:
+  # Настройка окружения
+  cp .env.example .env
+  # Отредактируй .env при необходимости (SECRET_KEY, DATABASE_URL и т.д.)
 
-```bat
-cd backend
-venv312\Scripts\python.exe -m pip install -r requirements.txt
-venv312\Scripts\python.exe bot.py
-```
+  # Применить миграции
+  alembic upgrade head
+  # (если БД уже существует без alembic_version — сначала: alembic stamp head)
 
-If you see `Cannot connect to api.telegram.org` / `WinError 10054`:
-- Keep VPN on; optional: set `TELEGRAM_PROXY` in `backend\.env` (e.g. `socks5://127.0.0.1:1080` if your VPN exposes a local SOCKS port).
-- The bot uses IPv4-only sessions (`IPv4AiohttpSession` in `bot.py`) for stability on Windows.
+  # Запуск сервера
+  uvicorn main:app --reload
+  # API доступно на http://127.0.0.1:8000
+  # Swagger UI:  http://127.0.0.1:8000/docs
 
-## Tests
-Run backend tests:
+  Или через скрипт:
+  scripts\run_backend.cmd
 
-```bat
-cd backend
-venv312\Scripts\python.exe -m pytest -q
-```
+2. ФРОНТЕНД
+-----------
 
-## Known runtime notes
-- First `/ai/search` call can be slow because CLIP model is loaded from cache.
-- Startup logs are printed in the terminal where backend is running.
+  cd frontend
+  npm install
+  npm run dev
+  # Доступно на http://localhost:3000
 
-## Next day plan
-1. Switch local DB to PostgreSQL and run Alembic there.
-2. Add admin CRUD for products/categories.
-3. Add seller role and seller-scoped product management.
-4. Improve AI search quality and add background embedding job.
+  Или через скрипт:
+  scripts\run_frontend.cmd
+
+3. ДЕМО-ДАННЫЕ
+--------------
+
+  Демо-каталог (9 товаров коллекции Recrent) добавляется автоматически
+  при первом запуске бэкенда через seed_recrent.py.
+
+--------------------------------------------------------------------------------
+ТЕСТЫ
+--------------------------------------------------------------------------------
+
+  cd backend
+  venv312\Scripts\python.exe -m pytest tests/ -v
+
+  Покрытие:
+  - AuthService:    регистрация, дубликат email, логин, неверный пароль
+  - CartService:    добавление, получение, удаление, несуществующий элемент
+  - OrdersService:  оформление заказа, очистка корзины, пустая корзина
+  - CatalogService: список товаров, поиск по имени/описанию, поиск по ID
+
+--------------------------------------------------------------------------------
+API ЭНДПОИНТЫ
+--------------------------------------------------------------------------------
+
+  POST /auth/register       — регистрация
+  POST /auth/login          — вход, возвращает JWT токен
+
+  GET  /products            — список товаров (поддерживает ?search=)
+  GET  /products/{id}       — один товар по ID
+
+  POST /cart/add            — добавить в корзину (auth)
+  GET  /cart                — содержимое корзины (auth)
+  DELETE /cart/{id}         — удалить из корзины (auth)
+
+  POST /orders/checkout     — оформить заказ из корзины (auth)
+  GET  /orders/my           — история заказов (auth)
+
+  POST /ai/search           — поиск по фото (multipart/form-data)
+
+--------------------------------------------------------------------------------
+ПЕРЕМЕННЫЕ ОКРУЖЕНИЯ (.env)
+--------------------------------------------------------------------------------
+
+  SECRET_KEY                — секрет для JWT
+  JWT_ALGORITHM             — алгоритм (HS256)
+  ACCESS_TOKEN_EXPIRE_MINUTES — время жизни токена (30)
+  DATABASE_URL              — sqlite:///./sql_app.db или postgresql://...
+  CORS_ORIGINS              — http://localhost:3000
+  FRONTEND_BASE_URL         — http://127.0.0.1:3000 (для ИИ-поиска)
+
+================================================================================

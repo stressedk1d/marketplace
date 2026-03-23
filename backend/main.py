@@ -18,7 +18,7 @@ from settings import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("\n[STARTUP] Starting SAVEPOINT API...")
+    print("\n[STARTUP] Starting VogueWay API...")
     print("[DB] Expecting schema managed by Alembic migrations.")
 
     # Lazy AI loading: model initializes only on first /ai/search request.
@@ -44,7 +44,7 @@ async def lifespan(app: FastAPI):
     yield
 
 
-app = FastAPI(title="Savepoint API", lifespan=lifespan)
+app = FastAPI(title="VogueWay API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

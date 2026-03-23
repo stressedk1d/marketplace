@@ -9,7 +9,6 @@ export default function RegisterPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [fullName, setFullName] = useState("");
-  const [tgId, setTgId] = useState("");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -19,24 +18,22 @@ export default function RegisterPage() {
     setMessage("");
 
     try {
-      const response = await fetch(apiUrl("/register"), {
+      const response = await fetch(apiUrl("/auth/register"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: email,
           password: password,
           full_name: fullName,
-          telegram_id: tgId,
         }),
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("Успех! Переходим к подтверждению...");
-        // Редирект на страницу верификации с передачей email в URL
+        setMessage("Успех! Переходим ко входу...");
         setTimeout(() => {
-          router.push(`/verify?email=${encodeURIComponent(email)}`);
+          router.push(`/login`);
         }, 1500);
       } else {
         setMessage("Ошибка: " + (data.detail || "Что-то пошло не так"));
@@ -60,7 +57,7 @@ export default function RegisterPage() {
           <div className="min-h-[460px] bg-[#d9d9d9]" />
           <form onSubmit={handleRegister} className="p-8 bg-[#f3f3f3] flex flex-col gap-4 text-black">
             <h1 className="h32 text-center">Регистрация</h1>
-            <p className="text16 text-center">Создайте аккаунт и подтвердите его в Telegram</p>
+            <p className="text16 text-center">Создайте аккаунт для входа в приложение</p>
 
             <label className="text20 mt-2">ФИО</label>
             <input
@@ -86,15 +83,6 @@ export default function RegisterPage() {
               className="border-b border-black bg-transparent p-2 outline-none text20"
               placeholder="********"
               onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-
-            <label className="text20 mt-2">Telegram ID</label>
-            <input
-              type="text"
-              className="border-b border-black bg-transparent p-2 outline-none text20"
-              placeholder="12345678"
-              onChange={(e) => setTgId(e.target.value)}
               required
             />
 

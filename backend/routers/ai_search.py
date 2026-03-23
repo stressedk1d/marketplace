@@ -1,7 +1,7 @@
 from io import BytesIO
 
-import requests
-from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
+import httpx
+from fastapi import APIRouter, Depends, File, Request, UploadFile
 from PIL import Image as PILImage
 from sentence_transformers import SentenceTransformer, util
 from sqlalchemy.orm import Session
@@ -38,25 +38,22 @@ def _get_or_load_model(request: Request) -> SentenceTransformer:
     return model_ai
 
 
-def _ensure_catalog_embeddings(db: Session, model_ai: SentenceTransformer) -> None:
+async def _ensure_catalog_embeddings(db: Session, model_ai: SentenceTransformer) -> None:
     products = db.query(models.Product).all()
     headers = {"User-Agent": "Mozilla/5.0"}
     updated = False
 
-    for product in products:
-        if product.image_embedding is not None:
-            continue
-        if not product.image_url:
-            continue
-
-        try:
-            resp = requests.get(_resolve_image_url(product.image_url), headers=headers, timeout=5)
-            img = PILImage.open(BytesIO(resp.content)).convert("RGB")
-            product.image_embedding = model_ai.encode(img)
-            updated = True
-        except Exception:
-            # Keep nullable embedding; item will be skipped in similarity ranking.
-            continue
+    async with httpx.AsyncClient(timeout=5) as client:
+        for product in products:
+            if product.image_embedding is not None or not product.image_url:
+                continue
+            try:
+                resp = await client.get(_resolve_image_url(product.image_url), headers=headers)
+                img = PILImage.open(BytesIO(resp.content)).convert("RGB")
+                product.image_embedding = model_ai.encode(img)
+                updated = True
+            except Exception:
+                continue
 
     if updated:
         db.commit()
@@ -74,7 +71,7 @@ async def ai_photo_search(
     query_img = PILImage.open(BytesIO(image_data)).convert("RGB")
     query_embedding = model_ai.encode(query_img)
 
-    _ensure_catalog_embeddings(db, model_ai)
+    await _ensure_catalog_embeddings(db, model_ai)
 
     all_products = db.query(models.Product).all()
     results = []

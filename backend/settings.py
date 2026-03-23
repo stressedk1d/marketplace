@@ -24,10 +24,21 @@ class Settings:
     secret_key: str = os.getenv("SECRET_KEY", "change-me-in-env")
     algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
-    telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
-    # Опционально: socks5://127.0.0.1:1080 — если VPN даёт локальный прокси (нужен пакет aiohttp-socks)
-    telegram_proxy: str | None = (os.getenv("TELEGRAM_PROXY") or "").strip() or None
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./sql_app.db")
+
+    # SMTP email settings
+    smtp_host: str = os.getenv("SMTP_HOST", "")
+    smtp_port: int = int(os.getenv("SMTP_PORT", "587"))
+    smtp_user: str = os.getenv("SMTP_USER", "")
+    smtp_password: str = os.getenv("SMTP_PASSWORD", "")
+    email_from: str = os.getenv("EMAIL_FROM", os.getenv("SMTP_USER", "noreply@example.com"))
+
+    # Mailtrap API token (приоритет над SMTP)
+    mailtrap_token: str = os.getenv("MAILTRAP_TOKEN", "")
+
+    # Verification code TTL in minutes
+    verification_code_ttl_minutes: int = int(os.getenv("VERIFICATION_CODE_TTL_MINUTES", "10"))
+    debug: bool = os.getenv("DEBUG", "true").lower() == "true"
 
     # Comma-separated list: http://localhost:3000,http://127.0.0.1:3000
     cors_origins_raw: str = os.getenv("CORS_ORIGINS", "http://localhost:3000")

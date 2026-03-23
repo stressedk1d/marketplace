@@ -1,136 +1,109 @@
-from pathlib import Path
-
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
+import pytest
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 
 import models
-import utils
-from database import Base, get_db
-from routers.auth import router as auth_router
-from routers.cart import router as cart_router
-from routers.catalog import router as catalog_router
-from routers.orders import router as orders_router
+from services import auth_service, cart_service, orders_service
 
 
-def _build_test_app(db_file: Path, monkeypatch):
-    engine = create_engine(
-        f"sqlite:///{db_file}",
-        connect_args={"check_same_thread": False},
-    )
-    testing_session_local = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-    Base.metadata.create_all(bind=engine)
+# ── Auth ──────────────────────────────────────────────────────────────────────
 
-    with testing_session_local() as db:
-        category = models.Category(name="Test category")
-        db.add(category)
-        db.flush()
-        db.add(
-            models.Product(
-                name="Test product",
-                description="Test description",
-                price=100.0,
-                image_url="https://example.com/image.jpg",
-                category_id=category.id,
-                image_embedding=None,
-            )
-        )
-        db.commit()
-
-    app = FastAPI()
-    app.include_router(auth_router)
-    app.include_router(catalog_router)
-    app.include_router(cart_router)
-    app.include_router(orders_router)
-
-    def override_get_db():
-        db = testing_session_local()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-    monkeypatch.setattr(utils, "send_telegram_message", lambda *_args, **_kwargs: {"ok": True})
-
-    return app, testing_session_local
+def test_register_success(db: Session):
+    auth_service.register_user("new@example.com", "pass123", "New User", db)
+    user = db.query(models.User).filter(models.User.email == "new@example.com").first()
+    assert user is not None
+    assert user.is_verified is True
+    assert user.full_name == "New User"
 
 
-def test_auth_cart_orders_flow(tmp_path, monkeypatch):
-    app, testing_session_local = _build_test_app(tmp_path / "test.db", monkeypatch)
-    client = TestClient(app)
+def test_register_duplicate_email(db: Session, test_user: models.User):
+    with pytest.raises(HTTPException) as exc:
+        auth_service.register_user(test_user.email, "pass123", "Another", db)
+    assert exc.value.status_code == 400
 
-    email = "test@example.com"
-    password = "StrongPass123"
 
-    register_resp = client.post(
-        "/register",
-        json={
-            "email": email,
-            "password": password,
-            "full_name": "Test User",
-            "telegram_id": "123456789",
-        },
-    )
-    assert register_resp.status_code == 200
+def test_login_success(db: Session, test_user: models.User):
+    token = auth_service.login_user(test_user.email, "password123", db)
+    assert isinstance(token, str)
+    assert len(token) > 0
 
-    with testing_session_local() as db:
-        user = db.query(models.User).filter(models.User.email == email).first()
-        assert user is not None
-        code = user.verification_code
 
-    verify_resp = client.post(
-        "/verify",
-        json={
-            "email": email,
-            "verification_code": code,
-        },
-    )
-    assert verify_resp.status_code == 200
+def test_login_wrong_password(db: Session, test_user: models.User):
+    with pytest.raises(HTTPException) as exc:
+        auth_service.login_user(test_user.email, "wrongpassword", db)
+    assert exc.value.status_code == 400
 
-    login_resp = client.post(
-        "/login",
-        json={
-            "email": email,
-            "password": password,
-        },
-    )
-    assert login_resp.status_code == 200
-    token = login_resp.json()["access_token"]
-    headers = {"Authorization": f"Bearer {token}"}
 
-    products_resp = client.get("/products")
-    assert products_resp.status_code == 200
-    product_id = products_resp.json()[0]["id"]
+def test_login_nonexistent_user(db: Session):
+    with pytest.raises(HTTPException) as exc:
+        auth_service.login_user("ghost@example.com", "pass123", db)
+    assert exc.value.status_code == 400
 
-    add_to_cart_resp = client.post(
-        "/cart/add",
-        headers=headers,
-        json={"product_id": product_id, "quantity": 2},
-    )
-    assert add_to_cart_resp.status_code == 200
 
-    cart_resp = client.get("/cart", headers=headers)
-    assert cart_resp.status_code == 200
-    cart_items = cart_resp.json()
-    assert len(cart_items) == 1
-    assert cart_items[0]["quantity"] == 2
+# ── Cart ──────────────────────────────────────────────────────────────────────
 
-    checkout_resp = client.post("/orders/checkout", headers=headers)
-    assert checkout_resp.status_code == 200
-    checkout_data = checkout_resp.json()
-    assert checkout_data["items_count"] == 1
-    assert checkout_data["total_amount"] == 200.0
+def test_add_to_cart(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 2, db)
+    items = cart_service.get_cart(test_user.id, db)
+    assert len(items) == 1
+    assert items[0].quantity == 2
+    assert items[0].product_id == test_product.id
 
-    cart_after_checkout_resp = client.get("/cart", headers=headers)
-    assert cart_after_checkout_resp.status_code == 200
-    assert cart_after_checkout_resp.json() == []
 
-    my_orders_resp = client.get("/orders/my", headers=headers)
-    assert my_orders_resp.status_code == 200
-    orders = my_orders_resp.json()
+def test_add_to_cart_increments_quantity(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    cart_service.add_to_cart(test_user.id, test_product.id, 3, db)
+    items = cart_service.get_cart(test_user.id, db)
+    assert items[0].quantity == 4
+
+
+def test_get_cart_empty(db: Session, test_user: models.User):
+    items = cart_service.get_cart(test_user.id, db)
+    assert items == []
+
+
+def test_remove_from_cart(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    items = cart_service.get_cart(test_user.id, db)
+    cart_service.remove_from_cart(test_user.id, items[0].id, db)
+    assert cart_service.get_cart(test_user.id, db) == []
+
+
+def test_remove_nonexistent_cart_item(db: Session, test_user: models.User):
+    with pytest.raises(HTTPException) as exc:
+        cart_service.remove_from_cart(test_user.id, 9999, db)
+    assert exc.value.status_code == 404
+
+
+# ── Orders ────────────────────────────────────────────────────────────────────
+
+def test_checkout_success(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 2, db)
+    result = orders_service.checkout(test_user.id, db)
+
+    assert result.order_id is not None
+    assert result.status == "created"
+    assert result.total_amount == test_product.price * 2
+    assert result.items_count == 1
+
+
+def test_checkout_clears_cart(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    orders_service.checkout(test_user.id, db)
+    assert cart_service.get_cart(test_user.id, db) == []
+
+
+def test_checkout_empty_cart(db: Session, test_user: models.User):
+    with pytest.raises(HTTPException) as exc:
+        orders_service.checkout(test_user.id, db)
+    assert exc.value.status_code == 400
+
+
+def test_get_user_orders(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    orders_service.checkout(test_user.id, db)
+
+    orders = orders_service.get_user_orders(test_user.id, db)
     assert len(orders) == 1
-    assert orders[0]["total_amount"] == 200.0
-    assert len(orders[0]["items"]) == 1
-    assert orders[0]["items"][0]["product_id"] == product_id
+    assert len(orders[0].items) == 1
+    assert orders[0].items[0].price_at_purchase == test_product.price
