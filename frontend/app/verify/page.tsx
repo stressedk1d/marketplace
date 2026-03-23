@@ -48,63 +48,58 @@ function VerifyContent() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100">
-      <div className="p-8 bg-white shadow-md rounded-lg w-96">
-        <h1 className="text-2xl font-bold mb-6 text-center text-black">
-          Подтверждение аккаунта
-        </h1>
-        <p className="text-sm text-gray-600 mb-4 text-center">
-          Введите 6-значный код, отправленный вашим ботом в Telegram
-        </p>
+    <div className="min-h-screen py-10">
+      <div className="container-main">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 border border-black/30">
+          <div className="min-h-[420px] bg-[#d9d9d9]" />
+          <div className="p-8 bg-[#f3f3f3]">
+            <h1 className="h32 mb-3 text-center">Подтверждение аккаунта</h1>
+            <p className="text16 text-center mb-6">
+              Введите код подтверждения, отправленный в Telegram
+            </p>
 
-        <form onSubmit={handleVerify} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Email
-            </label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full p-2 border border-gray-300 rounded mt-1 text-black"
-              required
-              placeholder="example@mail.com"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">
-              Код из Telegram
-            </label>
-            <input
-              type="text"
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              maxLength={6}
-              className="w-full p-2 border border-gray-300 rounded mt-1 text-center text-2xl tracking-widest text-black"
-              required
-              placeholder="000000"
-            />
-          </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full py-2 px-4 rounded text-white font-semibold ${
-              loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-            }`}
-          >
-            {loading ? "Проверка..." : "Подтвердить"}
-          </button>
-        </form>
+            <form onSubmit={handleVerify} className="space-y-4">
+              <div>
+                <label className="text20">Email</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="w-full p-2 border-b border-black bg-transparent mt-1 text20 outline-none"
+                  required
+                  placeholder="example@mail.com"
+                />
+              </div>
+              <div>
+                <label className="text20">Код из Telegram</label>
+                <input
+                  type="text"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  maxLength={6}
+                  className="w-full p-2 border-b border-black bg-transparent mt-1 text20 outline-none"
+                  required
+                  placeholder="000000"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={loading}
+                className={`w-full py-3 text20 ${
+                  loading ? "bg-gray-400 text-white" : "bg-[var(--accent-soft)] hover:brightness-95"
+                }`}
+              >
+                {loading ? "Проверка..." : "Подтвердить"}
+              </button>
+            </form>
 
-        {message && (
-          <p
-            className={`mt-4 text-center text-sm ${
-              message.includes("успешно") ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {message}
-          </p>
-        )}
+            {message ? (
+              <p className={`mt-4 text-center text16 ${message.includes("успешно") ? "text-green-700" : "text-red-700"}`}>
+                {message}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
     </div>
   );

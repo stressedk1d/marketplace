@@ -8,6 +8,16 @@ from sqlalchemy.orm import Session
 
 import models
 from database import get_db
+from settings import settings
+
+
+def _resolve_image_url(url: str) -> str:
+    if url.startswith("http://") or url.startswith("https://"):
+        return url
+    if url.startswith("/"):
+        base = settings.frontend_base_url.rstrip("/")
+        return f"{base}{url}"
+    return url
 
 router = APIRouter()
 
@@ -40,7 +50,7 @@ def _ensure_catalog_embeddings(db: Session, model_ai: SentenceTransformer) -> No
             continue
 
         try:
-            resp = requests.get(product.image_url, headers=headers, timeout=5)
+            resp = requests.get(_resolve_image_url(product.image_url), headers=headers, timeout=5)
             img = PILImage.open(BytesIO(resp.content)).convert("RGB")
             product.image_embedding = model_ai.encode(img)
             updated = True

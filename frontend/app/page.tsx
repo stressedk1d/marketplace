@@ -54,69 +54,68 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-black">
-      <form
-        onSubmit={handleRegister}
-        className="p-8 bg-white shadow-lg rounded-xl flex flex-col gap-4 w-96"
-      >
-        <h1 className="text-2xl font-bold mb-4 text-center">Регистрация</h1>
+    <div className="min-h-screen py-10">
+      <div className="container-main">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 border border-black/30">
+          <div className="min-h-[460px] bg-[#d9d9d9]" />
+          <form onSubmit={handleRegister} className="p-8 bg-[#f3f3f3] flex flex-col gap-4 text-black">
+            <h1 className="h32 text-center">Регистрация</h1>
+            <p className="text16 text-center">Создайте аккаунт и подтвердите его в Telegram</p>
 
-        <label className="text-sm font-semibold">ФИО</label>
-        <input
-          type="text"
-          className="border p-2 rounded"
-          placeholder="Иван Иванов"
-          onChange={(e) => setFullName(e.target.value)}
-          required
-        />
+            <label className="text20 mt-2">ФИО</label>
+            <input
+              type="text"
+              className="border-b border-black bg-transparent p-2 outline-none text20"
+              placeholder="Иван Иванов"
+              onChange={(e) => setFullName(e.target.value)}
+              required
+            />
 
-        <label className="text-sm font-semibold">Email</label>
-        <input
-          type="email"
-          className="border p-2 rounded"
-          placeholder="mail@example.com"
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+            <label className="text20 mt-2">Email</label>
+            <input
+              type="email"
+              className="border-b border-black bg-transparent p-2 outline-none text20"
+              placeholder="mail@example.com"
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
 
-        <label className="text-sm font-semibold">Пароль</label>
-        <input
-          type="password"
-          className="border p-2 rounded"
-          placeholder="********"
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+            <label className="text20 mt-2">Пароль</label>
+            <input
+              type="password"
+              className="border-b border-black bg-transparent p-2 outline-none text20"
+              placeholder="********"
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
 
-        <label className="text-sm font-semibold">Telegram ID</label>
-        <input
-          type="text"
-          className="border p-2 rounded"
-          placeholder="12345678"
-          onChange={(e) => setTgId(e.target.value)}
-          required
-        />
+            <label className="text20 mt-2">Telegram ID</label>
+            <input
+              type="text"
+              className="border-b border-black bg-transparent p-2 outline-none text20"
+              placeholder="12345678"
+              onChange={(e) => setTgId(e.target.value)}
+              required
+            />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`${
-            loading ? "bg-gray-400" : "bg-blue-600 hover:bg-blue-700"
-          } text-white p-2 rounded-lg font-bold transition`}
-        >
-          {loading ? "Регистрация..." : "Зарегистрироваться"}
-        </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`mt-4 py-3 text20 ${
+                loading ? "bg-gray-400 text-white" : "bg-[var(--accent-soft)] hover:brightness-95"
+              }`}
+            >
+              {loading ? "Регистрация..." : "Зарегистрироваться"}
+            </button>
 
-        {message && (
-          <p
-            className={`mt-4 text-center font-medium ${
-              message.includes("Ошибка") ? "text-red-600" : "text-blue-600"
-            }`}
-          >
-            {message}
-          </p>
-        )}
-      </form>
+            {message ? (
+              <p className={`mt-2 text-center text16 ${message.includes("Ошибка") ? "text-red-700" : "text-green-700"}`}>
+                {message}
+              </p>
+            ) : null}
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

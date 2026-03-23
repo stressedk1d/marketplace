@@ -55,16 +55,16 @@ export default function OrdersPage() {
   }, []);
 
   if (loading) {
-    return <div className="text-center mt-10 text-black">Загрузка заказов...</div>;
+    return <div className="text-center mt-10 text20">Загрузка заказов...</div>;
   }
 
   if (authMissing) {
     return (
-      <div className="min-h-screen bg-gray-50 p-8 text-black">
-        <div className="max-w-3xl mx-auto bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
-          <h1 className="text-2xl font-bold mb-3">История заказов</h1>
-          <p className="text-gray-600 mb-4">Для просмотра заказов нужно войти в аккаунт.</p>
-          <Link href="/login" className="text-blue-600 font-bold hover:underline">
+      <div className="min-h-screen py-8">
+        <div className="container-main max-w-3xl bg-white p-8 border border-black/20 text-center">
+          <h1 className="h32 mb-3">История заказов</h1>
+          <p className="text20 mb-4">Для просмотра заказов нужно войти в аккаунт.</p>
+          <Link href="/login" className="text20 underline">
             Перейти ко входу
           </Link>
         </div>
@@ -73,33 +73,33 @@ export default function OrdersPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 text-black">
-      <div className="max-w-5xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Мои заказы</h1>
+    <div className="min-h-screen py-8">
+      <div className="container-main text-black">
+        <h1 className="h32 mb-8">Мои заказы</h1>
 
         {orders.length === 0 ? (
-          <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-100 text-center">
-            <p className="text-gray-600 mb-4">У вас пока нет заказов.</p>
-            <Link href="/catalog" className="text-blue-600 font-bold hover:underline">
+          <div className="bg-white p-8 border border-black/20 text-center">
+            <p className="text20 mb-4">У вас пока нет заказов.</p>
+            <Link href="/catalog" className="text20 underline">
               Перейти в каталог
             </Link>
           </div>
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
-              <article key={order.id} className="bg-white rounded-xl border border-gray-100 shadow-sm">
-                <div className="p-5 border-b border-gray-100 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+              <article key={order.id} className="bg-white border border-black/20">
+                <div className="p-5 border-b border-black/10 flex flex-col md:flex-row md:items-center md:justify-between gap-2">
                   <div>
-                    <h2 className="text-lg font-bold">Заказ #{order.id}</h2>
-                    <p className="text-sm text-gray-500">
+                    <h2 className="text20 font-semibold">Заказ #{order.id}</h2>
+                    <p className="text16 text-gray-600">
                       {order.created_at
                         ? new Date(order.created_at).toLocaleString("ru-RU")
                         : "Дата недоступна"}
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm text-gray-500">Статус: {order.status}</p>
-                    <p className="text-xl font-black text-blue-600">{order.total_amount} ₽</p>
+                    <p className="text16">Статус: {order.status}</p>
+                    <p className="h32">{order.total_amount} ₽</p>
                   </div>
                 </div>
 
@@ -119,13 +119,13 @@ export default function OrdersPage() {
                           ) : null}
                         </div>
                         <div>
-                          <p className="font-semibold">{item.name ?? "Товар удален"}</p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text20 font-semibold">{item.name ?? "Товар удален"}</p>
+                          <p className="text16 text-gray-600">
                             {item.quantity} x {item.price_at_purchase} ₽
                           </p>
                         </div>
                       </div>
-                      <div className="font-bold">{item.quantity * item.price_at_purchase} ₽</div>
+                      <div className="text20 font-semibold">{item.quantity * item.price_at_purchase} ₽</div>
                     </div>
                   ))}
                 </div>

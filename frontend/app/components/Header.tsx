@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import Image from "next/image";
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -21,49 +22,66 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white shadow-sm border-b border-gray-200">
-      <div className="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
-        <Link href="/catalog" className="text-2xl font-bold text-blue-600 tracking-tighter">
-          SAVEPOINT
-        </Link>
-
-        <nav className="flex items-center gap-6">
-          <Link href="/catalog" className="text-gray-600 hover:text-blue-600 font-medium transition text-sm">
-            Каталог
+    <header className="bg-[#f3f3f3] border-b border-black/20">
+      <div className="container-main py-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text16">г. Москва</p>
+          <Link href="/catalog" className="inline-flex h-12 items-center justify-center">
+            <Image
+              src="/logo.png"
+              alt="Vogue Way"
+              width={140}
+              height={56}
+              priority
+              className="max-h-12 w-auto object-contain"
+            />
           </Link>
-
-          {isLoggedIn ? (
-            <>
-              <Link href="/orders" className="text-gray-600 hover:text-blue-600 font-medium transition text-sm">
-                Заказы
-              </Link>
-              <Link
-                href="/cart"
-                className="text-gray-600 hover:text-blue-600 font-medium transition text-sm flex items-center gap-1"
-              >
-                <span>🛒</span> Корзина
-              </Link>
-              <button
-                onClick={handleLogout}
-                className="text-red-500 hover:text-red-700 text-sm font-medium transition"
-              >
+          <div className="flex items-center gap-5">
+            {isLoggedIn ? (
+              <button onClick={handleLogout} className="text16 border border-black px-4 py-1.5">
                 Выйти
               </button>
-            </>
-          ) : (
-            <>
-              <Link href="/login" className="text-gray-600 hover:text-blue-600 text-sm font-medium transition">
+            ) : (
+              <Link href="/login" className="text16 border border-black px-4 py-1.5">
                 Войти
               </Link>
-              <Link
-                href="/"
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm hover:bg-blue-700 transition"
-              >
-                Регистрация
-              </Link>
-            </>
-          )}
-        </nav>
+            )}
+            <Link href="/cart" className="text16">
+              Корзина
+            </Link>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <nav className="flex flex-wrap items-center gap-6">
+            <Link href="/catalog" className="menu-text hover:underline">
+              Одежда /
+            </Link>
+            <Link href="/catalog" className="menu-text hover:underline">
+              Обувь /
+            </Link>
+            <Link href="/catalog" className="menu-text hover:underline">
+              Аксессуары /
+            </Link>
+            <Link href="/orders" className="menu-text hover:underline">
+              Знаменитости /
+            </Link>
+            <Link href="/catalog" className="menu-text hover:underline">
+              Бренды /
+            </Link>
+          </nav>
+
+          <form className="flex items-center">
+            <input
+              type="text"
+              placeholder="Поиск"
+              className="w-52 h-9 border border-black px-3 text16 bg-transparent"
+            />
+            <button type="submit" className="h-9 px-4 bg-black text-white text16">
+              🔍
+            </button>
+          </form>
+        </div>
       </div>
     </header>
   );

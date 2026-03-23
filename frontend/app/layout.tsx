@@ -1,6 +1,13 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import "./globals.css";
-import Header from "./components/Header"; // Импорт
+import Footer from "./components/Footer";
+import Header from "./components/Header";
+
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  weight: ["400", "600", "700"],
+});
 
 export const metadata: Metadata = {
   title: "Savepoint Marketplace",
@@ -14,9 +21,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="ru">
-      <body className="antialiased bg-gray-50">
-        <Header /> {/* Шапка будет здесь */}
+      <body className={`${inter.className} antialiased`}>
+        <Header />
         <main>{children}</main>
+        <Footer />
       </body>
     </html>
   );

@@ -45,58 +45,57 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 text-black">
-      <form
-        onSubmit={handleLogin}
-        className="p-8 bg-white shadow-lg rounded-xl flex flex-col gap-4 w-96"
-      >
-        <h1 className="text-2xl font-bold mb-4 text-center">Вход в систему</h1>
+    <div className="min-h-screen py-10">
+      <div className="container-main">
+        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 border border-black/30">
+          <div className="min-h-[420px] bg-[#d9d9d9]" />
+          <form onSubmit={handleLogin} className="p-8 bg-[#f3f3f3] flex flex-col gap-4 text-black">
+            <h1 className="h32 text-center">Введите Email</h1>
+            <p className="text16 text-center">На эту почту поступит код подтверждения</p>
 
-        <label className="text-sm font-semibold">Email</label>
-        <input
-          type="email"
-          className="border p-2 rounded"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+            <label className="text20 mt-2">Почта</label>
+            <input
+              type="email"
+              className="border-b border-black bg-transparent p-2 outline-none text20"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
 
-        <label className="text-sm font-semibold">Пароль</label>
-        <input
-          type="password"
-          className="border p-2 rounded"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
+            <label className="text20 mt-2">Пароль</label>
+            <input
+              type="password"
+              className="border-b border-black bg-transparent p-2 outline-none text20"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
 
-        <button
-          type="submit"
-          disabled={loading}
-          className={`p-2 rounded-lg font-bold text-white transition ${
-            loading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
-          }`}
-        >
-          {loading ? "Вход..." : "Войти"}
-        </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className={`mt-4 py-3 text20 ${
+                loading ? "bg-gray-400 text-white" : "bg-[var(--accent-soft)] hover:brightness-95"
+              }`}
+            >
+              {loading ? "Вход..." : "Войти"}
+            </button>
 
-        {message && (
-          <p
-            className={`mt-4 text-center text-sm ${
-              message.includes("выполнен") ? "text-green-600" : "text-red-600"
-            }`}
-          >
-            {message}
-          </p>
-        )}
+            {message ? (
+              <p className={`mt-2 text-center text16 ${message.includes("выполнен") ? "text-green-700" : "text-red-700"}`}>
+                {message}
+              </p>
+            ) : null}
 
-        <p className="text-center text-sm mt-2">
-          Нет аккаунта? {/* Заменили <a> на <Link> */}
-          <Link href="/" className="text-blue-600 underline">
-            Зарегистрироваться
-          </Link>
-        </p>
-      </form>
+            <p className="text-center text16 mt-2">
+              Нет аккаунта?{" "}
+              <Link href="/" className="underline">
+                Зарегистрироваться
+              </Link>
+            </p>
+          </form>
+        </div>
+      </div>
     </div>
   );
 }

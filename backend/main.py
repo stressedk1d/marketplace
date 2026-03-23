@@ -7,6 +7,7 @@ from sqlalchemy.exc import OperationalError
 
 import models
 from database import SessionLocal
+from seed_recrent import seed_recrent_catalog
 from routers.ai_search import router as ai_router
 from routers.auth import router as auth_router
 from routers.cart import router as cart_router
@@ -27,40 +28,15 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         try:
-            has_products = db.query(models.Product).first()
+            db.query(models.Product).first()
         except OperationalError as exc:
             raise RuntimeError(
                 "Database schema is not initialized. Run migrations via "
                 "'scripts\\migrate_backend.cmd' (or 'alembic upgrade head')."
             ) from exc
 
-        if not has_products:
-            print("[DB] Seeding initial catalog data...")
-            category = models.Category(name="Clothes")
-            db.add(category)
-            db.commit()
-            db.refresh(category)
-
-            products_data = [
-                {"name": "White hoodie", "url": "https://images.unsplash.com/photo-1564859228273-274232fdb516?w=600"},
-                {"name": "Red sneakers", "url": "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600"},
-                {"name": "Black jacket", "url": "https://images.unsplash.com/photo-1551028719-00167b16eac5?w=600"},
-                {"name": "Blue jeans", "url": "https://images.unsplash.com/photo-1542272604-787c3835535d?w=600"},
-            ]
-
-            for product in products_data:
-                db.add(
-                    models.Product(
-                        name=product["name"],
-                        description="Starter collection item",
-                        price=2900.0,
-                        category_id=category.id,
-                        image_url=product["url"],
-                        image_embedding=None,
-                    )
-                )
-            db.commit()
-            print("[DB] Catalog seeded.")
+        # Демо-каталог Recrent (картинки из frontend/public/images/products)
+        seed_recrent_catalog(db)
     finally:
         db.close()
 

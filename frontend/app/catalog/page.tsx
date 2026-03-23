@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import { apiUrl } from "@/lib/api";
 
 interface Product {
@@ -91,35 +92,29 @@ export default function CatalogPage() {
 
   if (loading)
     return (
-      <div className="text-center mt-10 text-black">Загрузка каталога...</div>
+      <div className="text-center mt-10 text20">Загрузка каталога...</div>
     );
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen py-8">
+      <div className="container-main">
         <div className="flex flex-col md:flex-row justify-between items-center mb-10 gap-4">
-          <h1 className="text-4xl font-black text-black tracking-tight">
-            Каталог
-          </h1>
+          <h1 className="h32">Каталог</h1>
 
           <div className="flex items-center gap-4">
-            {/* Кнопка сброса фильтра */}
             <button
               onClick={fetchProducts}
-              className="text-sm text-gray-500 hover:text-black transition"
+              className="text16 border border-black px-4 py-2 bg-white"
             >
               Сбросить всё
             </button>
 
-            {/* ИИ Поиск */}
             <label
-              className={`cursor-pointer flex items-center gap-2 px-6 py-3 rounded-full font-bold transition shadow-lg ${
-                isAiSearching
-                  ? "bg-gray-400"
-                  : "bg-gradient-to-r from-purple-600 to-blue-600 text-white hover:scale-105"
+              className={`cursor-pointer flex items-center gap-2 px-6 py-3 border border-black text16 transition ${
+                isAiSearching ? "bg-gray-300" : "bg-black text-white"
               }`}
             >
-              <span>{isAiSearching ? "ИИ думает..." : "✨ Поиск по фото"}</span>
+              <span>{isAiSearching ? "ИИ думает..." : "Поиск по фото"}</span>
               <input
                 type="file"
                 accept="image/*"
@@ -133,38 +128,39 @@ export default function CatalogPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
           {products.map((product) => (
-            <div
+            <article
               key={product.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-2xl transition-all duration-300 text-black group"
+              className="bg-[#d9d9d9] border border-black/10 overflow-hidden text-black"
             >
-              <div className="relative w-full h-64 bg-gray-200">
-                <Image
-                  src={product.image_url}
-                  alt={product.name}
-                  fill
-                  unoptimized
-                  className="object-cover group-hover:scale-110 transition-transform duration-500"
-                />
-              </div>
+              <Link href={`/product/${product.id}`} className="block">
+                <div className="relative w-full h-64 bg-[#cfcfcf]">
+                  <Image
+                    src={product.image_url}
+                    alt={product.name}
+                    fill
+                    unoptimized
+                    className="object-cover"
+                  />
+                </div>
+              </Link>
 
-              <div className="p-5">
-                <h2 className="text-xl font-bold mb-1">{product.name}</h2>
-                <p className="text-gray-500 text-sm line-clamp-2 mb-4 h-10">
+              <div className="p-4 bg-[#f3f3f3]">
+                <p className="text20 text-[#e9e7bf]">Цена: {product.price} ₽</p>
+                <p className="text20">Бренд/знаменитость</p>
+                <Link href={`/product/${product.id}`} className="inline-block">
+                  <h2 className="text20 font-semibold mb-1 hover:underline">{product.name}</h2>
+                </Link>
+                <p className="text16 text-gray-700 line-clamp-2 mb-4 h-12">
                   {product.description}
                 </p>
-                <div className="flex justify-between items-center">
-                  <span className="text-2xl font-black text-blue-600">
-                    {product.price} ₽
-                  </span>
-                  <button
-                    onClick={() => addToCart(product.id)}
-                    className="bg-black text-white px-5 py-2.5 rounded-xl font-bold hover:bg-gray-800 transition"
-                  >
-                    В корзину
-                  </button>
-                </div>
+                <button
+                  onClick={() => addToCart(product.id)}
+                  className="w-full border border-black py-2 text20 bg-white hover:bg-gray-100 transition"
+                >
+                  В корзину
+                </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       </div>

@@ -25,10 +25,15 @@ class Settings:
     algorithm: str = os.getenv("JWT_ALGORITHM", "HS256")
     access_token_expire_minutes: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     telegram_bot_token: str = os.getenv("TELEGRAM_BOT_TOKEN", "")
+    # Опционально: socks5://127.0.0.1:1080 — если VPN даёт локальный прокси (нужен пакет aiohttp-socks)
+    telegram_proxy: str | None = (os.getenv("TELEGRAM_PROXY") or "").strip() or None
     database_url: str = os.getenv("DATABASE_URL", "sqlite:///./sql_app.db")
 
     # Comma-separated list: http://localhost:3000,http://127.0.0.1:3000
     cors_origins_raw: str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
+
+    # Для локальных путей /images/... при скачивании картинок на бэкенде (ИИ-поиск, эмбеддинги)
+    frontend_base_url: str = os.getenv("FRONTEND_BASE_URL", "http://127.0.0.1:3000")
 
     @property
     def cors_origins(self) -> list[str]:

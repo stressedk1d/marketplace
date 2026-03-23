@@ -95,18 +95,19 @@ export default function CartPage() {
   const totalPrice = items.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   if (loading) {
-    return <div className="text-center mt-10 text-black">Загрузка корзины...</div>;
+    return <div className="text-center mt-10 text20">Загрузка корзины...</div>;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8 text-black font-sans">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold mb-8">Ваша корзина</h1>
+    <div className="min-h-screen py-8">
+      <div className="container-main text-black">
+        <h1 className="h32 mb-8">Ваша корзина</h1>
 
         {items.length === 0 ? (
-          <div className="bg-white p-8 rounded-xl shadow-md text-center">
-            <p className="text-gray-500 mb-4 text-lg">В корзине пока пусто</p>
-            <Link href="/catalog" className="text-blue-600 font-bold hover:underline">
+          <div className="bg-white p-8 border border-black/20 text-center">
+            <h2 className="h32 mb-4">Подобрали для вас</h2>
+            <p className="mb-4 text24">В корзине пока пусто</p>
+            <Link href="/catalog" className="text20 underline">
               Перейти к покупкам
             </Link>
           </div>
@@ -115,10 +116,10 @@ export default function CartPage() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="bg-white p-4 rounded-xl shadow-sm flex items-center justify-between border border-gray-100"
+                className="bg-white p-4 flex items-center justify-between border border-black/20"
               >
                 <div className="flex items-center gap-4">
-                  <div className="relative w-24 h-24 bg-gray-100 rounded-lg overflow-hidden border">
+                  <div className="relative w-24 h-24 bg-gray-100 overflow-hidden border border-black/10">
                     <Image
                       src={item.image_url}
                       alt={item.name}
@@ -128,19 +129,19 @@ export default function CartPage() {
                     />
                   </div>
                   <div>
-                    <h2 className="text-xl font-bold">{item.name}</h2>
-                    <p className="text-gray-500 text-sm">Цена: {item.price} ₽</p>
-                    <p className="text-gray-500 text-sm">Количество: {item.quantity}</p>
+                    <h2 className="text20 font-semibold">{item.name}</h2>
+                    <p className="text20">Цена: {item.price} ₽</p>
+                    <p className="text20">Количество: {item.quantity}</p>
                   </div>
                 </div>
 
                 <div className="flex items-center gap-8">
-                  <span className="text-xl font-bold text-blue-600">
+                  <span className="h32">
                     {item.price * item.quantity} ₽
                   </span>
                   <button
                     onClick={() => removeItem(item.id)}
-                    className="text-red-500 hover:text-red-700 transition font-medium text-sm border border-red-100 px-3 py-1 rounded-lg hover:bg-red-50"
+                    className="text16 border border-black px-4 py-2 bg-white hover:bg-gray-100 transition"
                   >
                     Удалить
                   </button>
@@ -148,16 +149,17 @@ export default function CartPage() {
               </div>
             ))}
 
-            <div className="mt-8 bg-white p-6 rounded-xl shadow-lg flex justify-between items-center border-t-4 border-blue-600">
+            <div className="mt-8 bg-white p-6 flex justify-between items-center border border-black/20">
               <div>
-                <span className="text-gray-500 text-sm uppercase tracking-wider">Итого к оплате</span>
-                <p className="text-4xl font-black text-black">{totalPrice} ₽</p>
+                <p className="text20">Итого к оплате</p>
+                <p className="h32">{totalPrice} ₽</p>
+                <p className="text16 mt-2 text-gray-700">Соглашение с правилами: принято</p>
               </div>
               <button
-                className={`px-10 py-4 rounded-xl font-bold text-lg transition shadow-lg ${
+                className={`px-10 py-4 text24 transition border border-black ${
                   checkoutLoading
                     ? "bg-gray-400 text-white cursor-not-allowed"
-                    : "bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200"
+                    : "bg-black text-white hover:bg-gray-900"
                 }`}
                 onClick={handleCheckout}
                 disabled={checkoutLoading}

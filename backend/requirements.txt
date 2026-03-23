@@ -11,5 +11,6 @@ requests
 Pillow
 sentence-transformers
 aiogram
+aiohttp-socks
 alembic
 pytest
