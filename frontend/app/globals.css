@@ -62,3 +62,46 @@ body {
   font-size: 12px;
   line-height: 1.35;
 }
+
+@keyframes home-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes home-fade-in-soft {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-home-in {
+  animation: home-fade-in 0.65s ease-out forwards;
+}
+
+.animate-home-in-delay {
+  animation: home-fade-in 0.65s ease-out 0.12s forwards;
+  opacity: 0;
+}
+
+.animate-home-soft {
+  animation: home-fade-in-soft 0.5s ease-out forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-home-in,
+  .animate-home-in-delay,
+  .animate-home-soft {
+    animation: none;
+    opacity: 1;
+    transform: none;
+  }
+}

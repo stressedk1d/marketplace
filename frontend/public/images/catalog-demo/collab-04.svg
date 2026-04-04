@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <rect width="640" height="640" fill="#1f1814"/>
+  <text x="320" y="290" text-anchor="middle" fill="#B8956A" font-size="34" font-family="system-ui,sans-serif">Коллаб — демо</text>
+  <text x="320" y="350" text-anchor="middle" fill="#B8956A" font-size="20" font-family="system-ui,sans-serif" opacity="0.9">Плейсхолдер 4</text>
+</svg>

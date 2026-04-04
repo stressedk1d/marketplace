@@ -131,7 +131,7 @@ export default function AccountPage() {
                       <p className="text16 text-gray-400 text-sm mt-0.5">
                         {order.created_at ? new Date(order.created_at).toLocaleDateString("ru-RU") : ""}
                       </p>
-                      <p className="text16 mt-1">Заказ #{order.id} · {order.total_amount} ₽</p>
+                      <p className="text16 mt-1 text-black">Заказ #{order.id} · {order.total_amount} ₽</p>
                     </div>
                   ))}
                 </div>

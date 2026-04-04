@@ -4,10 +4,11 @@ import httpx
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from PIL import Image as PILImage
 from sentence_transformers import SentenceTransformer, util
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 import models
 from database import get_db
+from services.catalog_service import product_to_response
 from settings import settings
 
 
@@ -73,7 +74,14 @@ async def ai_photo_search(
 
     await _ensure_catalog_embeddings(db, model_ai)
 
-    all_products = db.query(models.Product).all()
+    all_products = (
+        db.query(models.Product)
+        .options(
+            joinedload(models.Product.brand),
+            joinedload(models.Product.collection),
+        )
+        .all()
+    )
     results = []
     for product in all_products:
         if product.image_embedding is None:
@@ -83,7 +91,7 @@ async def ai_photo_search(
 
     if not results:
         print("[AI] Catalog has no embeddings yet, returning fallback products.")
-        return all_products[:3]
+        return [product_to_response(p) for p in all_products[:3]]
 
     results.sort(key=lambda x: x[0], reverse=True)
-    return [product for score, product in results[:3]]
+    return [product_to_response(p) for _score, p in results[:3]]

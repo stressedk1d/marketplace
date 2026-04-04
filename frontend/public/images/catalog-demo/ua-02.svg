@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <rect width="640" height="640" fill="#0D1B4D"/>
+  <text x="320" y="290" text-anchor="middle" fill="#C8D4F0" font-size="32" font-family="system-ui,sans-serif">Under Armour — демо</text>
+  <text x="320" y="350" text-anchor="middle" fill="#C8D4F0" font-size="18" font-family="system-ui,sans-serif" opacity="0.9">Placeholder 2</text>
+</svg>

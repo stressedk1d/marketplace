@@ -3,6 +3,8 @@ from fastapi import HTTPException
 from sqlalchemy.orm import Session
 
 import models
+import utils
+from models import OrderStatus
 from services import auth_service, cart_service, orders_service
 
 
@@ -107,3 +109,58 @@ def test_get_user_orders(db: Session, test_user: models.User, test_product: mode
     assert len(orders) == 1
     assert len(orders[0].items) == 1
     assert orders[0].items[0].price_at_purchase == test_product.price
+
+
+def test_status_flow_created_to_delivered(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    out = orders_service.checkout(test_user.id, db)
+    oid = out.order_id
+
+    orders_service.update_order_status(oid, test_user.id, OrderStatus.paid, db)
+    orders_service.update_order_status(oid, test_user.id, OrderStatus.shipped, db)
+    orders_service.update_order_status(oid, test_user.id, OrderStatus.delivered, db)
+
+    orders = orders_service.get_user_orders(test_user.id, db)
+    assert orders[0].status == OrderStatus.delivered
+
+
+def test_status_cancel_from_created(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    oid = orders_service.checkout(test_user.id, db).order_id
+    orders_service.update_order_status(oid, test_user.id, OrderStatus.cancelled, db)
+    assert orders_service.get_user_orders(test_user.id, db)[0].status == OrderStatus.cancelled
+
+
+def test_status_delivered_cannot_cancel(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    oid = orders_service.checkout(test_user.id, db).order_id
+    for s in (OrderStatus.paid, OrderStatus.shipped, OrderStatus.delivered):
+        orders_service.update_order_status(oid, test_user.id, s, db)
+    with pytest.raises(HTTPException) as exc:
+        orders_service.update_order_status(oid, test_user.id, OrderStatus.cancelled, db)
+    assert exc.value.status_code == 400
+
+
+def test_status_wrong_user_forbidden(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    oid = orders_service.checkout(test_user.id, db).order_id
+    other = models.User(
+        email="other@example.com",
+        password_hash=utils.get_password_hash("x"),
+        full_name="O",
+        is_verified=True,
+    )
+    db.add(other)
+    db.commit()
+    db.refresh(other)
+    with pytest.raises(HTTPException) as exc:
+        orders_service.update_order_status(oid, other.id, OrderStatus.paid, db)
+    assert exc.value.status_code == 403
+
+
+def test_status_invalid_transition(db: Session, test_user: models.User, test_product: models.Product):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    oid = orders_service.checkout(test_user.id, db).order_id
+    with pytest.raises(HTTPException) as exc:
+        orders_service.update_order_status(oid, test_user.id, OrderStatus.shipped, db)
+    assert exc.value.status_code == 400

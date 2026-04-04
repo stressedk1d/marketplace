@@ -25,6 +25,13 @@ interface Product {
   description: string;
 }
 
+interface ProductListResponse {
+  items: Product[];
+  total: number;
+  limit: number;
+  offset: number;
+}
+
 export default function CartPage() {
   const router = useRouter();
   const { refreshCart } = useCart();
@@ -57,9 +64,11 @@ export default function CartPage() {
 
   useEffect(() => {
     fetchCart();
-    fetch(apiUrl("/products"))
+    fetch(apiUrl("/products?limit=50&offset=0"))
       .then((r) => r.json())
-      .then((data: Product[]) => setSuggested(data.slice(0, 6)))
+      .then((data: ProductListResponse) =>
+        setSuggested(data.items.slice(0, 6))
+      )
       .catch(() => {});
   }, []);
 
@@ -155,7 +164,7 @@ export default function CartPage() {
                       </div>
                     </Link>
                     <div className="p-3 flex flex-col flex-1">
-                      <p className="text16 text-[#b5a97a] mb-1">{p.price} ₽</p>
+                      <p className="text16 text-black mb-1">{p.price} ₽</p>
                       <p className="text16 font-semibold line-clamp-2 min-h-[40px] mb-2">{p.name}</p>
                       <button
                         onClick={() => addToCart(p.id)}
@@ -193,7 +202,7 @@ export default function CartPage() {
                             <p className="text16 text-gray-500 mb-0.5">Бренд/знаменитость</p>
                             <p className="text16 font-semibold line-clamp-2">{item.name}</p>
                           </div>
-                          <p className="text16 text-[#b5a97a] shrink-0">{item.price} ₽</p>
+                          <p className="text16 text-black shrink-0">{item.price} ₽</p>
                         </div>
                         <div className="flex items-center gap-2 mt-3">
                           <button className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">−</button>
@@ -236,7 +245,7 @@ export default function CartPage() {
                   <button className="flex-1 py-1.5 text16 border border-black bg-white hover:bg-gray-50">Сразу</button>
                 </div>
 
-                <div className="flex justify-between text16 mb-1">
+                <div className="flex justify-between text16 mb-1 text-black">
                   <span>Товары, {totalCount} шт.</span>
                   <span>{totalPrice} ₽</span>
                 </div>
@@ -244,7 +253,7 @@ export default function CartPage() {
                   <span>Моя скидка</span>
                   <span>Расчёт скидки</span>
                 </div>
-                <div className="flex justify-between text20 font-semibold mb-5">
+                <div className="flex justify-between text20 font-semibold mb-5 text-black">
                   <span>Итого</span>
                   <span>{totalPrice} ₽</span>
                 </div>
@@ -277,7 +286,7 @@ export default function CartPage() {
                     </div>
                   </Link>
                   <div className="p-3 flex flex-col flex-1">
-                    <p className="text16 text-[#b5a97a] mb-1">{p.price} ₽</p>
+                    <p className="text16 text-black mb-1">{p.price} ₽</p>
                     <p className="text16 font-semibold line-clamp-2 min-h-[40px] mb-2">{p.name}</p>
                     <button
                       onClick={() => addToCart(p.id)}

@@ -89,7 +89,7 @@ function LoginForm() {
 
             <p className="text-center text16 mt-2">
               Нет аккаунта?{" "}
-              <Link href="/" className="underline">Зарегистрироваться</Link>
+              <Link href="/register" className="underline">Зарегистрироваться</Link>
             </p>
           </form>
         </div>

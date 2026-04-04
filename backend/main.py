@@ -7,12 +7,13 @@ from sqlalchemy.exc import OperationalError
 
 import models
 from database import SessionLocal
-from seed_recrent import seed_recrent_catalog
+from seed_catalog import seed_catalog
 from routers.ai_search import router as ai_router
 from routers.auth import router as auth_router
 from routers.cart import router as cart_router
 from routers.catalog import router as catalog_router
 from routers.orders import router as orders_router
+from routers.wishlist import router as wishlist_router
 from settings import settings
 
 
@@ -36,7 +37,7 @@ async def lifespan(app: FastAPI):
             ) from exc
 
         # Демо-каталог Recrent (картинки из frontend/public/images/products)
-        seed_recrent_catalog(db)
+        seed_catalog(db)
     finally:
         db.close()
 
@@ -58,4 +59,5 @@ app.include_router(auth_router)
 app.include_router(catalog_router)
 app.include_router(cart_router)
 app.include_router(orders_router)
+app.include_router(wishlist_router)
 app.include_router(ai_router)

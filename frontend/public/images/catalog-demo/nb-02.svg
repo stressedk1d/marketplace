@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <rect width="640" height="640" fill="#2B2B2B"/>
+  <text x="320" y="290" text-anchor="middle" fill="#C8102E" font-size="30" font-family="system-ui,sans-serif">New Balance — demo</text>
+  <text x="320" y="350" text-anchor="middle" fill="#C8102E" font-size="17" font-family="system-ui,sans-serif" opacity="0.9">Placeholder 2</text>
+</svg>

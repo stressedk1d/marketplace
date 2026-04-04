@@ -6,7 +6,23 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Toast from "@/app/components/Toast";
+import WishlistHeart from "@/app/components/WishlistHeart";
 import { useCart } from "@/lib/CartContext";
+import { useWishlist } from "@/lib/useWishlist";
+import { recordProductView } from "@/lib/recently-viewed";
+
+interface BrandBrief {
+  id: number;
+  name: string;
+  slug: string;
+  is_celebrity?: boolean;
+}
+
+interface CollectionBrief {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 interface Product {
   id: number;
@@ -14,6 +30,15 @@ interface Product {
   description: string;
   price: number;
   image_url: string;
+  brand?: BrandBrief | null;
+  collection?: CollectionBrief | null;
+}
+
+interface ProductListResponse {
+  items: Product[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 // Строит массив всех изображений товара по префиксу папки
@@ -50,6 +75,7 @@ export default function ProductPage() {
   const [cartMessageType, setCartMessageType] = useState<"success" | "error">("success");
   const [lightbox, setLightbox] = useState<string | null>(null);
   const { refreshCart } = useCart();
+  const { ids: wishlistIds, toggle: toggleWishlist } = useWishlist();
 
   const closeLightbox = useCallback(() => setLightbox(null), []);
 
@@ -65,11 +91,12 @@ export default function ProductPage() {
       try {
         const [productRes, allRes] = await Promise.all([
           fetch(apiUrl(`/products/${params.id}`)),
-          fetch(apiUrl("/products")),
+          fetch(apiUrl("/products?limit=50&offset=0")),
         ]);
         if (productRes.ok) setProduct(await productRes.json());
         if (allRes.ok) {
-          const all: Product[] = await allRes.json();
+          const payload: ProductListResponse = await allRes.json();
+          const all = payload.items;
           setSimilar(all.filter((p) => p.id !== Number(params.id)).slice(0, 6));
         }
       } catch (err) {
@@ -80,6 +107,16 @@ export default function ProductPage() {
     };
     load();
   }, [params.id]);
+
+  useEffect(() => {
+    if (!product) return;
+    recordProductView({
+      id: product.id,
+      name: product.name,
+      price: product.price,
+      image_url: product.image_url ?? null,
+    });
+  }, [product]);
 
   const addToCart = async (id: number) => {
     const token = localStorage.getItem("token");
@@ -163,9 +200,46 @@ export default function ProductPage() {
             </section>
 
             <aside className="border border-black/20 p-5 bg-[#f3f3f3] h-fit">
-              <h1 className="h32 mb-2">Бренд/знаменитость</h1>
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <h1 className="h32">Бренд/знаменитость</h1>
+                <WishlistHeart
+                  saved={wishlistIds.has(product.id)}
+                  onToggle={() =>
+                    void toggleWishlist(product.id, () => {
+                      setCartMessage("Войдите, чтобы сохранять избранное");
+                      setCartMessageType("error");
+                    })
+                  }
+                />
+              </div>
               <p className="text20 mb-6">{product.name}</p>
-              <p className="h32 mb-6">{product.price} ₽</p>
+              {product.brand && (
+                <p className="text16 text-gray-600 mb-2">
+                  {product.brand.is_celebrity ? "Знаменитость" : "Бренд"}:{" "}
+                  <Link
+                    href={
+                      product.brand.is_celebrity
+                        ? `/celebrities/${product.brand.slug}`
+                        : `/brands/${product.brand.slug}`
+                    }
+                    className="underline"
+                  >
+                    {product.brand.name}
+                  </Link>
+                </p>
+              )}
+              {product.collection && (
+                <p className="text16 text-gray-600 mb-4">
+                  Коллекция:{" "}
+                  <Link
+                    href={`/collections/${product.collection.slug}`}
+                    className="underline"
+                  >
+                    {product.collection.name}
+                  </Link>
+                </p>
+              )}
+              <p className="h32 mb-6 text-black">{product.price} ₽</p>
               <button type="button" className="w-full text16 border border-black py-2 bg-white mb-3">
                 Выбрать размер
               </button>
@@ -196,14 +270,26 @@ export default function ProductPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
                 {similar.map((item) => (
                   <article key={item.id} className="bg-[#f3f3f3] border border-black/15 flex flex-col">
-                    <Link href={`/product/${item.id}`} className="block">
-                      <div className="relative h-44 bg-[#d9d9d9]">
+                    <div className="relative h-44 bg-[#d9d9d9]">
+                      <Link href={`/product/${item.id}`} className="block absolute inset-0">
                         <Image src={item.image_url} alt={item.name} fill unoptimized className="object-cover" />
+                      </Link>
+                      <div className="absolute top-1.5 right-1.5 z-10">
+                        <WishlistHeart
+                          size="sm"
+                          saved={wishlistIds.has(item.id)}
+                          onToggle={() =>
+                            void toggleWishlist(item.id, () => {
+                              setCartMessage("Войдите, чтобы сохранять избранное");
+                              setCartMessageType("error");
+                            })
+                          }
+                        />
                       </div>
-                    </Link>
+                    </div>
                     <div className="p-3 flex flex-col flex-1">
                       <p className="text16 font-semibold line-clamp-2 min-h-[44px] mb-1">{item.name}</p>
-                      <p className="text16 text-[#e9e7bf] flex-1 mb-2">{item.price} ₽</p>
+                      <p className="text16 text-black flex-1 mb-2">{item.price} ₽</p>
                       <button
                         type="button"
                         onClick={() => addToCart(item.id)}

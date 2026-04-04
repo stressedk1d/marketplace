@@ -11,7 +11,7 @@ const navItems = [
   { label: "Обувь", href: "/catalog" },
   { label: "Аксессуары", href: "/catalog" },
   { label: "Знаменитости", href: "/celebrities" },
-  { label: "Бренды", href: "/catalog" },
+  { label: "Бренды", href: "/brands" },
 ];
 
 export default function Header() {
@@ -46,7 +46,7 @@ export default function Header() {
       <div className="container-main py-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text16">г. Москва</p>
-          <Link href="/catalog" className="inline-flex h-12 items-center justify-center">
+          <Link href="/" className="inline-flex h-12 items-center justify-center">
             <Image src="/logo.png" alt="VogueWay" width={140} height={56} priority className="max-h-12 w-auto object-contain" />
           </Link>
           <div className="flex items-center gap-5">
@@ -59,6 +59,9 @@ export default function Header() {
                 Войти
               </Link>
             )}
+            <Link href="/wishlist" className="text16">
+              Избранное
+            </Link>
             <Link href="/cart" className="text16 relative">
               Корзина
               {count > 0 && (

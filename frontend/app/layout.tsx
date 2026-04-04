@@ -13,6 +13,9 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "VogueWay",
   description: "Маркетплейс одежды",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
