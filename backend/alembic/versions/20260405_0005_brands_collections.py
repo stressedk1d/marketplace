@@ -79,10 +79,10 @@ def upgrade() -> None:
         sa.text(
             """
             INSERT INTO collections (name, slug, description, brand_id, is_featured) VALUES
-            (:n1, 'nike-summer-2025', 'Лёгкая летняя коллекция: сетки, дышащие материалы.', :nike, 1),
-            (:a1, 'adidas-originals', 'Классические силуэты Adidas Originals.', :adidas, 1),
-            (:r1, 'recrent', 'Официальный мерч и streetwear Recrent.', :recrent, 1),
-            (:t1, 'travis-scott-nike', 'Коллаборация Travis Scott x Nike — демо-линейка.', :nike, 1)
+            (:n1, 'nike-summer-2025', 'Лёгкая летняя коллекция: сетки, дышащие материалы.', :nike, true),
+            (:a1, 'adidas-originals', 'Классические силуэты Adidas Originals.', :adidas, true),
+            (:r1, 'recrent', 'Официальный мерч и streetwear Recrent.', :recrent, true),
+            (:t1, 'travis-scott-nike', 'Коллаборация Travis Scott x Nike — демо-линейка.', :nike, true)
             """
         ),
         {
