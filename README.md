@@ -1,122 +1,101 @@
-# VogueWay
+# Catalog UI (Next.js + Design System + Visual Search)
 
-Маркетплейс одежды и коллекций: бренды, избранные коллекции, мерч знаменитостей, корзина, заказы и ИИ-поиск по фото. Учебный / дипломный проект.
+Production-oriented e-commerce catalog frontend with visual search and a strict design system layer.
 
-## Стек
+## Overview
 
-**Бэкенд**
+This project implements a modern marketplace catalog experience:
 
-- Python 3.12+
-- FastAPI, SQLAlchemy (sync), Alembic, Pydantic v2
-- JWT + bcrypt, опционально SMTP для подтверждения email
-- SQLite (разработка) или PostgreSQL (см. `.env.postgres.example`)
-- pytest
-- Опционально: `sentence-transformers` / CLIP для `/ai/search`
+- Product discovery through filters, sorting, and pagination
+- Visual Search for image-based product matching
+- Responsive catalog UX for desktop and mobile
+- System-driven UI built on reusable design primitives
 
-**Фронтенд**
+The frontend is intentionally architecture-first: UI components consume design system primitives instead of defining ad-hoc styles.
 
-- Next.js (App Router), TypeScript, Tailwind CSS
-- Переменная `NEXT_PUBLIC_API_URL` — базовый URL API (по умолчанию `http://localhost:8000`)
+## Design System
 
-## Возможности
+Catalog UI is implemented with a lightweight enforced design system under `frontend/app/catalog/ui/`.
 
-- Регистрация, вход, подтверждение email (в dev код может логироваться)
-- Каталог: фильтры (категория, бренд, коллекция, цена), сортировка в т.ч. **по популярности** (`views_count`), бесконечная подгрузка
-- **Бренды** (Nike, Adidas, Puma, Under Armour, New Balance, Converse и др.) и **знаменитости** (Recrent, Kanye West, Rihanna, Drake, Billie Eilish и др.) — флаг `is_celebrity`, отдельные разделы на главной
-- Коллекции, в т.ч. избранные на главной (без коллекций знаменитостей в блоке «Featured»)
-- Карточка товара, просмотры → **тренды** на главной
-- **Недавно просмотренные** (localStorage, до 10 товаров)
-- Корзина, оформление заказа, статусы заказа, история
-- Избранное (wishlist)
-- ИИ-поиск по изображению товара
+- `tokens.ts` - design primitives (radius, shadow, transition, color usage rules)
+- `classes.ts` - composable UI primitives (buttons, cards, inputs, chips, overlays, selectable states)
+- `rules.ts` - enforcement contract (forbidden patterns, allowed patterns, architecture rule)
 
-## Структура репозитория
+Core principle:
 
+**UI is fully system-driven. No ad-hoc styling decisions inside components.**
+
+## Features
+
+- Product catalog with filtering
+- Sorting and pagination
+- Visual Search (image-based product discovery)
+- Responsive layout (desktop sidebar + mobile drawer/sheet)
+- Enforced design system UI consistency
+
+## Architecture
+
+- **URL-driven state** - catalog state synchronized with query params
+- **Backend-driven data** - no frontend business logic duplication
+- **Cached query layer** - deterministic query keys and response caching
+- **Separation of concerns**
+  - API layer: data fetching and transport
+  - UI layer: component composition
+  - Design system layer: tokens, classes, and rules
+
+## Tech Stack
+
+- Next.js (App Router)
+- React
+- TypeScript
+- Tailwind CSS
+
+## Key Principles
+
+- No styling decisions inside components
+- Composition-only UI
+- Tokens-first design system
+- Backend-driven catalog state
+
+## Project Structure
+
+```text
+backend/                         # FastAPI backend
+frontend/
+  app/catalog/
+    components/                 # Catalog UI components (system consumers)
+    ui/
+      tokens.ts                 # Design tokens
+      classes.ts                # UI primitives
+      rules.ts                  # Enforcement rules
+  lib/                          # API/query integration layer
 ```
-backend/          # FastAPI, модели, сервисы, роутеры, Alembic
-frontend/         # Next.js приложение, публичные ассеты (favicon, images)
-scripts/          # migrate_backend.cmd, run_backend.cmd, run_frontend.cmd и др.
-```
 
-Бэкенд: `routers/` → тонкий HTTP-слой, `services/` — логика, `models.py`, `schemas.py`, `seed_catalog.py` — идемпотентное наполнение демо-каталога при старте API.
+## Local Run
 
-## Локальный запуск
-
-### 1. Бэкенд
+### Backend
 
 ```bash
 cd backend
 python -m venv venv312
-venv312\Scripts\activate          # Windows
+venv312\Scripts\activate
 pip install -r requirements.txt
-copy .env.example .env            # настройте SECRET_KEY и при необходимости SMTP
+copy .env.example .env
 alembic upgrade head
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-- API: http://127.0.0.1:8000  
-- Swagger: http://127.0.0.1:8000/docs  
-
-Либо: `scripts\run_backend.cmd`  
-Миграции: `scripts\migrate_backend.cmd`
-
-После миграций при старте приложения вызывается **`seed_catalog`**: добавляются только отсутствующие бренды, коллекции и товары (проверка по slug и маркерам).
-
-### 2. Фронтенд
+### Frontend
 
 ```bash
 cd frontend
 npm install
-# при необходимости: .env.local с NEXT_PUBLIC_API_URL=http://127.0.0.1:8000
 npm run dev
 ```
 
-Открыть http://localhost:3000  
+If needed, set `NEXT_PUBLIC_API_URL` in `frontend/.env.local`.
 
-Либо: `scripts\run_frontend.cmd`
+## Notes
 
-### 3. Иконка вкладки
-
-Файл `frontend/public/favicon.png`; в `app/layout.tsx` задано `metadata.icons`.
-
-## Категории товаров (демо)
-
-| Категория              | Примеры назначения                          |
-|------------------------|---------------------------------------------|
-| **Celebrities**        | Мерч и коллабы знаменитостей, Travis Scott |
-| **Sports**             | New Balance                                 |
-| **Streetwear**         | Converse                                    |
-| **Спорт и streetwear** | Nike, Adidas, Puma, Under Armour          |
-
-## API (кратко)
-
-| Метод | Путь | Описание |
-|-------|------|----------|
-| POST | `/auth/register`, `/auth/login` | Регистрация, JWT |
-| GET | `/brands` | Список брендов; `?is_celebrity=true\|false` — фильтр |
-| GET | `/collections` | `featured`, `is_featured`, `exclude_celebrity_brands` |
-| GET | `/categories` | Категории |
-| GET | `/products` | Список: `search`, `category_id`, `brand_id`, `brand_slug`, `collection_id`, `sort` (`popular`, `price_asc`, …) |
-| GET | `/products/{id}` | Товар (увеличивает `views_count`) |
-| GET | `/collections/{slug}/products` | Товары коллекции |
-| POST | `/cart/add`, GET `/cart`, DELETE `/cart/{id}` | Корзина (JWT) |
-| POST | `/orders/checkout`, GET `/orders/my` | Заказы (JWT) |
-| GET/POST | wishlist, verify и др. | См. `/docs` |
-| POST | `/ai/search` | Поиск по фото |
-
-## Переменные окружения (бэкенд)
-
-См. `backend/.env.example`: `SECRET_KEY`, `DATABASE_URL`, `CORS_ORIGINS`, `FRONTEND_BASE_URL`, SMTP для писем.
-
-## Тесты
-
-```bash
-cd backend
-python -m pytest tests/ -v
-```
-
-Отдельно каталог: `python -m pytest tests/test_catalog.py -v`
-
-## Лицензия / назначение
-
-Проект создан в учебных целях.
+- Visual Search integration uses backend endpoints and keeps the existing UX flow intact.
+- Catalog rendering, filtering UI, and visual states are standardized via `tokens.ts + classes.ts + rules.ts`.
