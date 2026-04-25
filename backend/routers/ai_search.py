@@ -1,9 +1,9 @@
 from io import BytesIO
+from typing import Any
 
 import httpx
 from fastapi import APIRouter, Depends, File, Request, UploadFile
 from PIL import Image as PILImage
-from sentence_transformers import SentenceTransformer, util
 from sqlalchemy.orm import Session, joinedload
 
 import models
@@ -23,7 +23,10 @@ def _resolve_image_url(url: str) -> str:
 router = APIRouter()
 
 
-def _get_or_load_model(request: Request) -> SentenceTransformer:
+def _get_or_load_model(request: Request) -> Any:
+    # Lazy import keeps app startup fast and avoids heavy ML import on boot.
+    from sentence_transformers import SentenceTransformer
+
     model_ai = getattr(request.app.state, "model_ai", None)
     if model_ai is not None:
         return model_ai
@@ -39,7 +42,7 @@ def _get_or_load_model(request: Request) -> SentenceTransformer:
     return model_ai
 
 
-async def _ensure_catalog_embeddings(db: Session, model_ai: SentenceTransformer) -> None:
+async def _ensure_catalog_embeddings(db: Session, model_ai: Any) -> None:
     products = db.query(models.Product).all()
     headers = {"User-Agent": "Mozilla/5.0"}
     updated = False
@@ -66,6 +69,8 @@ async def ai_photo_search(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    from sentence_transformers import util
+
     model_ai = _get_or_load_model(request)
 
     image_data = await file.read()
