@@ -50,7 +50,7 @@ def upgrade() -> None:
         sa.text(
             """
             INSERT INTO product_images (product_id, url, position, is_primary, created_at)
-            SELECT p.id, p.image_url, 0, 1, CURRENT_TIMESTAMP
+            SELECT p.id, p.image_url, 0, true, CURRENT_TIMESTAMP
             FROM products p
             WHERE p.image_url IS NOT NULL
               AND TRIM(p.image_url) <> ''
