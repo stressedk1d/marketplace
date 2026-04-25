@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
   getRecentlyViewed,
+  replaceRecentlyViewed,
   type RecentProductSnapshot,
 } from "@/lib/recently-viewed";
+import { apiUrl } from "@/lib/api";
 
 const PLACEHOLDER = "/images/catalog-demo/nike-01.svg";
 
@@ -14,13 +16,55 @@ export function RecentViewedSection() {
   const [items, setItems] = useState<RecentProductSnapshot[]>([]);
 
   useEffect(() => {
-    const sync = () => setItems(getRecentlyViewed());
-    sync();
-    window.addEventListener("vw-recently-viewed", sync);
-    window.addEventListener("storage", sync);
+    let disposed = false;
+
+    const sync = async () => {
+      const local = getRecentlyViewed();
+      if (local.length === 0) {
+        if (!disposed) setItems([]);
+        return;
+      }
+
+      const checked = await Promise.all(
+        local.map(async (entry) => {
+          try {
+            const res = await fetch(apiUrl(`/products/${entry.id}`), {
+              cache: "no-store",
+            });
+            if (!res.ok) return null;
+            const payload = (await res.json()) as {
+              id: number;
+              name: string;
+              price: number;
+              image_url: string | null;
+            };
+            return {
+              id: payload.id,
+              name: payload.name,
+              price: payload.price,
+              image_url: payload.image_url,
+            } satisfies RecentProductSnapshot;
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const valid = checked.filter((x): x is RecentProductSnapshot => x !== null);
+      replaceRecentlyViewed(valid);
+      if (!disposed) setItems(valid);
+    };
+
+    const onRecentlyViewed = () => void sync();
+    const onStorage = () => void sync();
+
+    void sync();
+    window.addEventListener("vw-recently-viewed", onRecentlyViewed);
+    window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener("vw-recently-viewed", sync);
-      window.removeEventListener("storage", sync);
+      disposed = true;
+      window.removeEventListener("vw-recently-viewed", onRecentlyViewed);
+      window.removeEventListener("storage", onStorage);
     };
   }, []);
 

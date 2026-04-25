@@ -210,13 +210,18 @@ export default function CartPage() {
                           <button className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">+</button>
                         </div>
                         <div className="flex items-center gap-4 mt-3">
-                          <button className="text16 text-gray-400 hover:text-black">♡</button>
-                          <button className="text16 text-gray-400 hover:text-black">⊡</button>
+                          <button className="text16 text-gray-400 hover:text-black" aria-label="В избранное">
+                            <Image src="/add-to-favorites.png" alt="" width={16} height={16} />
+                          </button>
+                          <button className="text16 text-gray-400 hover:text-black" aria-label="Поделиться">
+                            <Image src="/share-icon.png" alt="" width={16} height={16} />
+                          </button>
                           <button
                             onClick={() => removeItem(item.id)}
                             className="text16 text-gray-400 hover:text-black"
+                            aria-label="Удалить"
                           >
-                            ✕
+                            <Image src="/delete-icon.png" alt="" width={16} height={16} />
                           </button>
                         </div>
                       </div>

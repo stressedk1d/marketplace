@@ -64,6 +64,10 @@ def get_collection_products(
     collection_slug: str,
     db: Session = Depends(get_db),
     search: Optional[str] = None,
+    product_type: Optional[str] = Query(
+        None,
+        description="Тип товара: clothing, shoes, accessories (или Одежда/Обувь/Аксессуары)",
+    ),
     min_price: Optional[float] = Query(None, ge=0),
     max_price: Optional[float] = Query(None, ge=0),
     sort: ProductSort = ProductSort.name_asc,
@@ -74,6 +78,7 @@ def get_collection_products(
         db,
         collection_slug,
         search=search,
+        product_type=product_type,
         min_price=min_price,
         max_price=max_price,
         sort=sort,
@@ -99,6 +104,10 @@ def get_categories(db: Session = Depends(get_db)) -> list[CategoryResponse]:
 def get_products(
     db: Session = Depends(get_db),
     search: Optional[str] = None,
+    product_type: Optional[str] = Query(
+        None,
+        description="Тип товара: clothing, shoes, accessories (или Одежда/Обувь/Аксессуары)",
+    ),
     category_id: Optional[int] = Query(None, ge=1),
     brand_id: Optional[int] = Query(None, ge=1),
     brand_slug: Optional[str] = Query(
@@ -115,6 +124,7 @@ def get_products(
     return catalog_service.list_products(
         db,
         search=search,
+        product_type=product_type,
         category_id=category_id,
         brand_id=brand_id,
         brand_slug=brand_slug,

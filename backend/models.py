@@ -1,7 +1,19 @@
 import enum
 from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, PickleType, String, UniqueConstraint
+from sqlalchemy import (
+    Boolean,
+    Column,
+    DateTime,
+    Enum,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    PickleType,
+    String,
+    UniqueConstraint,
+)
 from sqlalchemy.orm import relationship
 
 from database import Base
@@ -13,6 +25,12 @@ class OrderStatus(str, enum.Enum):
     shipped = "shipped"
     delivered = "delivered"
     cancelled = "cancelled"
+
+
+class ProductType(str, enum.Enum):
+    clothing = "clothing"
+    shoes = "shoes"
+    accessories = "accessories"
 
 
 class User(Base):
@@ -75,12 +93,55 @@ class Product(Base):
     collection_id = Column(Integer, ForeignKey("collections.id"), nullable=True, index=True)
     image_embedding = Column(PickleType, nullable=True)
     views_count = Column(Integer, nullable=False, default=0)
+    product_type = Column(
+        Enum(
+            ProductType,
+            native_enum=False,
+            name="product_type_enum",
+            length=20,
+        ),
+        nullable=False,
+        default=ProductType.clothing,
+        index=True,
+    )
 
     category = relationship("Category", back_populates="products")
     brand = relationship("Brand", back_populates="products")
     collection = relationship("Collection", back_populates="products")
     order_items = relationship("OrderItem", back_populates="product")
     wishlist_entries = relationship("WishlistItem", back_populates="product")
+    images = relationship(
+        "ProductImage",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by=lambda: (
+            ProductImage.is_primary.desc(),
+            ProductImage.position.asc(),
+            ProductImage.id.asc(),
+        ),
+    )
+
+
+class ProductImage(Base):
+    __tablename__ = "product_images"
+    __table_args__ = (
+        UniqueConstraint("product_id", "url", name="uq_product_images_product_url"),
+        Index("ix_product_images_product_id_position", "product_id", "position"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(
+        Integer,
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    url = Column(String, nullable=False)
+    position = Column(Integer, nullable=False, default=0)
+    is_primary = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+
+    product = relationship("Product", back_populates="images")
 
 
 class WishlistItem(Base):

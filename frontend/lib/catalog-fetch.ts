@@ -11,6 +11,7 @@ const REVALIDATE_SEC = 60;
 async function catalogFetch<T>(path: string, fallback: T): Promise<T> {
   try {
     const res = await fetch(apiUrl(path), {
+      cache: "no-store",
       next: { revalidate: REVALIDATE_SEC },
       signal: AbortSignal.timeout(10_000),
     });
@@ -28,7 +29,9 @@ export async function fetchBrands(): Promise<CatalogBrand[]> {
 
 export async function fetchCelebrityBrands(): Promise<CatalogBrand[]> {
   const data = await catalogFetch<CatalogBrand[]>("/brands?is_celebrity=true", []);
-  return Array.isArray(data) ? data : [];
+  const rows = Array.isArray(data) ? data : [];
+  const allowed = new Set(["recrent", "billie-eilish"]);
+  return rows.filter((b) => allowed.has(b.slug));
 }
 
 export async function fetchFeaturedCollectionsRetail(): Promise<

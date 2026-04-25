@@ -41,27 +41,198 @@ interface ProductListResponse {
   offset: number;
 }
 
-// Строит массив всех изображений товара по префиксу папки
-// image_url: /images/products/rekrent-hoodie-black/rekrent-hoodie-black.png
-// доп. фото:  /images/products/rekrent-hoodie-black/rekrent-hoodie-black1.webp, ...2.webp и т.д.
-const EXTRA_IMAGES: Record<string, string[]> = {
-  "rekrent-hoodie-black":    ["rekrent-hoodie-black1.webp", "rekrent-hoodie-black2.webp"],
-  "rekrent-hoodie-white":    ["rekrent-hoodie-white1.webp", "rekrent-hoodie-white2.webp", "rekrent-hoodie-white3.webp"],
-  "rekrent-necklace":        ["rekrent-necklace1.webp"],
-  "rekrent-sleeves-black":   ["rekrent-sleeves-black1.webp", "rekrent-sleeves-black2.webp"],
-  "rekrent-sleeves-white":   ["rekrent-sleeves-white1.webp", "rekrent-sleeves-white2.webp"],
-  "rekrent-tee-dragon-black":["rekrent-tee-dragon-black1.webp", "rekrent-tee-dragon-black2.webp"],
-  "rekrent-tee-dragon-white":["rekrent-tee-dragon-white1.webp", "rekrent-tee-dragon-white2.webp"],
-  "rekrent-tee-logo-black":  ["rekrent-tee-logo-black1.webp", "rekrent-tee-logo-black2.webp"],
-  "rekrent-tee-logo-white":  ["rekrent-tee-logo-white1.webp", "rekrent-tee-logo-white2.webp"],
+// Дополнительные изображения галереи по главному image_url товара.
+const EXTRA_IMAGES_BY_PRIMARY: Record<string, string[]> = {
+  "/images/celebrities/recrent/recrent-hoodie-black/recrent-hoodie-black.png": [
+    "/images/celebrities/recrent/recrent-hoodie-black/recrent-hoodie-black1.webp",
+    "/images/celebrities/recrent/recrent-hoodie-black/recrent-hoodie-black2.webp",
+  ],
+  "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white.png": [
+    "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white1.webp",
+    "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white2.webp",
+    "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white3.webp",
+  ],
+  "/images/celebrities/recrent/recrent-necklace/recrent-necklace.png": [
+    "/images/celebrities/recrent/recrent-necklace/recrent-necklace1.webp",
+  ],
+  "/images/celebrities/recrent/recrent-sleeves-black/recrent-sleeves-black.png": [
+    "/images/celebrities/recrent/recrent-sleeves-black/recrent-sleeves-black1.webp",
+    "/images/celebrities/recrent/recrent-sleeves-black/recrent-sleeves-black2.webp",
+  ],
+  "/images/celebrities/recrent/recrent-sleeves-white/recrent-sleeves-white.png": [
+    "/images/celebrities/recrent/recrent-sleeves-white/recrent-sleeves-white1.webp",
+    "/images/celebrities/recrent/recrent-sleeves-white/recrent-sleeves-white2.webp",
+  ],
+  "/images/celebrities/recrent/recrent-tee-dragon-black/recrent-tee-dragon-black.png": [
+    "/images/celebrities/recrent/recrent-tee-dragon-black/recrent-tee-dragon-black1.webp",
+    "/images/celebrities/recrent/recrent-tee-dragon-black/recrent-tee-dragon-black2.webp",
+  ],
+  "/images/celebrities/recrent/recrent-tee-dragon-white/recrent-tee-dragon-white.png": [
+    "/images/celebrities/recrent/recrent-tee-dragon-white/recrent-tee-dragon-white1.webp",
+    "/images/celebrities/recrent/recrent-tee-dragon-white/recrent-tee-dragon-white2.webp",
+  ],
+  "/images/celebrities/recrent/recrent-tee-logo-black/recrent-tee-logo-black.png": [
+    "/images/celebrities/recrent/recrent-tee-logo-black/recrent-tee-logo-black1.webp",
+    "/images/celebrities/recrent/recrent-tee-logo-black/recrent-tee-logo-black2.webp",
+  ],
+  "/images/celebrities/recrent/recrent-tee-logo-white/recrent-tee-logo-white.png": [
+    "/images/celebrities/recrent/recrent-tee-logo-white/recrent-tee-logo-white1.webp",
+    "/images/celebrities/recrent/recrent-tee-logo-white/recrent-tee-logo-white2.webp",
+  ],
+  "/images/brands/adidas/Adidas Gazelle Indoor.webp": [
+    "/images/brands/adidas/Adidas Gazelle Indoor1.webp",
+    "/images/brands/adidas/Adidas Gazelle Indoor2.webp",
+    "/images/brands/adidas/Adidas Gazelle Indoor3.webp",
+    "/images/brands/adidas/Adidas Gazelle Indoor4.webp",
+  ],
+  "/images/brands/adidas/Adidas Adicolor Track Top.webp": [
+    "/images/brands/adidas/Adidas Adicolor Track Top1.webp",
+    "/images/brands/adidas/Adidas Adicolor Track Top2.webp",
+    "/images/brands/adidas/Adidas Adicolor Track Top3.webp",
+  ],
+  "/images/brands/adidas/Adidas Adicolor SST Pants.jpg": [
+    "/images/brands/adidas/Adidas Adicolor SST Pants1.jpg",
+    "/images/brands/adidas/Adidas Adicolor SST Pants2.jpg",
+    "/images/brands/adidas/Adidas Adicolor SST Pants3.jpg",
+  ],
+  "/images/brands/adidas/Adidas Forum Low.webp": [
+    "/images/brands/adidas/Adidas Forum Low1.webp",
+    "/images/brands/adidas/Adidas Forum Low2.webp",
+    "/images/brands/adidas/Adidas Forum Low3.webp",
+  ],
+  "/images/brands/adidas/Adidas Racer TR23.webp": [
+    "/images/brands/adidas/Adidas Racer TR231.webp",
+    "/images/brands/adidas/Adidas Racer TR232.webp",
+    "/images/brands/adidas/Adidas Racer TR233.webp",
+    "/images/brands/adidas/Adidas Racer TR234.webp",
+  ],
+  "/images/brands/adidas/Adidas Classic Backpack.webp": [
+    "/images/brands/adidas/Adidas Classic Backpack1.webp",
+    "/images/brands/adidas/Adidas Classic Backpack2.webp",
+    "/images/brands/adidas/Adidas Classic Backpack3.webp",
+    "/images/brands/adidas/Adidas Classic Backpack4.webp",
+    "/images/brands/adidas/Adidas Classic Backpack5.webp",
+  ],
+  "/images/brands/adidas/Adidas Aeroready Cap.webp": [
+    "/images/brands/adidas/Adidas Aeroready Cap2.webp",
+    "/images/brands/adidas/Adidas Aeroready Cap3.webp",
+    "/images/brands/adidas/Adidas Aeroready Cap4.webp",
+  ],
+  "/images/brands/adidas/Adidas Essentials Fleece Hoodie.webp": [
+    "/images/brands/adidas/Adidas Essentials Fleece Hoodie1.webp",
+    "/images/brands/adidas/Adidas Essentials Fleece Hoodie2.webp",
+    "/images/brands/adidas/Adidas Essentials Fleece Hoodie3.webp",
+    "/images/brands/adidas/Adidas Essentials Fleece Hoodie4.webp",
+  ],
+  "/images/brands/adidas/Adidas Adilette Comfort.webp": [
+    "/images/brands/adidas/Adidas Adilette Comfort1.webp",
+    "/images/brands/adidas/Adidas Adilette Comfort2.webp",
+    "/images/brands/adidas/Adidas Adilette Comfort3.webp",
+    "/images/brands/adidas/Adidas Adilette Comfort4.webp",
+    "/images/brands/adidas/Adidas Adilette Comfort5.webp",
+  ],
+  "/images/brands/converse/Converse Chuck 701.webp": [
+    "/images/brands/converse/Converse Chuck 702.webp",
+    "/images/brands/converse/Converse Chuck 703.webp",
+    "/images/brands/converse/Converse Chuck 704.webp",
+    "/images/brands/converse/Converse Chuck 705.webp",
+  ],
+  "/images/brands/converse/Converse One Star Pro.webp": [
+    "/images/brands/converse/Converse One Star Pro2.webp",
+  ],
+  "/images/brands/converse/Converse Run Star Hike.webp": [
+    "/images/brands/converse/Converse Run Star Hike1.webp",
+    "/images/brands/converse/Converse Run Star Hike2.webp",
+    "/images/brands/converse/Converse Run Star Hike3.webp",
+  ],
+  "/images/brands/converse/Converse Graphic Hoodie.webp": [
+    "/images/brands/converse/Converse Graphic Hoodie1.webp",
+    "/images/brands/converse/Converse Graphic Hoodie2.webp",
+  ],
+  "/images/brands/converse/Converse Tote.webp": [
+    "/images/brands/converse/Converse Tote1.webp",
+    "/images/brands/converse/Converse Tote2.webp",
+  ],
+  "/images/brands/converse/Converse Beanie.webp": [
+    "/images/brands/converse/Converse Beanie1.webp",
+    "/images/brands/converse/Converse Beanie2.webp",
+  ],
+  "/images/brands/new_balance/New Balance 574 Core.webp": [
+    "/images/brands/new_balance/New Balance 574 Core1.webp",
+  ],
+  "/images/brands/new_balance/New Balance FuelCell Rebel v4.webp": [
+    "/images/brands/new_balance/New Balance FuelCell Rebel v41.webp",
+    "/images/brands/new_balance/New Balance FuelCell Rebel v42.webp",
+  ],
+  "/images/brands/new_balance/New Balance Impact Run Short.webp": [
+    "/images/brands/new_balance/New Balance Impact Run Short1.webp",
+    "/images/brands/new_balance/New Balance Impact Run Short2.webp",
+    "/images/brands/new_balance/New Balance Impact Run Short3.webp",
+  ],
+  "/images/brands/new_balance/New Balance Q Speed Jacquard Tee.webp": [
+    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee1.webp",
+    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee2.webp",
+    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee3.webp",
+    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee4.webp",
+  ],
+  "/images/brands/new_balance/New Balance Heat Grid Half Zip.webp": [
+    "/images/brands/new_balance/New Balance Heat Grid Half Zip1.webp",
+    "/images/brands/new_balance/New Balance Heat Grid Half Zip2.webp",
+    "/images/brands/new_balance/New Balance Heat Grid Half Zip3.webp",
+  ],
+  "/images/brands/new_balance/New Balance Running Cap.webp": [
+    "/images/brands/new_balance/New Balance Running Cap1.webp",
+    "/images/brands/new_balance/New Balance Running Cap3.webp",
+    "/images/brands/new_balance/New Balance Running Cap4.webp",
+  ],
+  "/images/brands/new_balance/New Balance Essentials Backpack.webp": [
+    "/images/brands/new_balance/New Balance Essentials Backpack1.webp",
+    "/images/brands/new_balance/New Balance Essentials Backpack2.webp",
+    "/images/brands/new_balance/New Balance Essentials Backpack3.webp",
+  ],
+  "/images/brands/nike/Nike Air Zoom Pegasus 41.webp": [
+    "/images/brands/nike/Nike Air Zoom Pegasus 411.webp",
+    "/images/brands/nike/Nike Air Zoom Pegasus 412.webp",
+    "/images/brands/nike/Nike Air Zoom Pegasus 413.webp",
+    "/images/brands/nike/Nike Air Zoom Pegasus 414.webp",
+  ],
+  "/images/brands/nike/Nike Dri-FIT Miler Top.webp": [
+    "/images/brands/nike/Nike Dri-FIT Miler Top1.webp",
+    "/images/brands/nike/Nike Dri-FIT Miler Top2.webp",
+    "/images/brands/nike/Nike Dri-FIT Miler Top3.webp",
+  ],
+  "/images/brands/nike/Nike Challenger Shorts 7.webp": [
+    "/images/brands/nike/Nike Challenger Shorts 71.webp",
+    "/images/brands/nike/Nike Challenger Shorts 72.webp",
+    "/images/brands/nike/Nike Challenger Shorts 73.webp",
+    "/images/brands/nike/Nike Challenger Shorts 74.webp",
+  ],
+  "/images/brands/nike/Nike Club Fleece Hoodie.webp": [
+    "/images/brands/nike/Nike Club Fleece Hoodie1.webp",
+    "/images/brands/nike/Nike Club Fleece Hoodie2.webp",
+    "/images/brands/nike/Nike Club Fleece Hoodie3.webp",
+  ],
+  "/images/brands/nike/Nike Brasilia Duffel.webp": [
+    "/images/brands/nike/Nike Brasilia Duffel1.webp",
+    "/images/brands/nike/Nike Brasilia Duffel2.webp",
+    "/images/brands/nike/Nike Brasilia Duffel3.webp",
+  ],
+  "/images/brands/nike/Nike Charge Backpack.webp": [
+    "/images/brands/nike/Nike Charge Backpack1.webp",
+    "/images/brands/nike/Nike Charge Backpack2.webp",
+    "/images/brands/nike/Nike Charge Backpack3.webp",
+    "/images/brands/nike/Nike Charge Backpack4.webp",
+    "/images/brands/nike/Nike Charge Backpack5.webp",
+  ],
+  "/images/celebrities/billie eilish/Billie Tour Tote.webp": [
+    "/images/celebrities/billie eilish/Billie Tour Tote1.webp",
+    "/images/celebrities/billie eilish/Billie Tour Tote2.webp",
+    "/images/celebrities/billie eilish/Billie Tour Tote3.webp",
+  ],
 };
 
 function getProductImages(imageUrl: string): string[] {
-  // Извлекаем папку: /images/products/rekrent-hoodie-black/...  → rekrent-hoodie-black
-  const folder = imageUrl.split("/").slice(-2, -1)[0];
-  const extras = (EXTRA_IMAGES[folder] ?? []).map(
-    (f) => `/images/products/${folder}/${f}`
-  );
+  const extras = EXTRA_IMAGES_BY_PRIMARY[imageUrl] ?? [];
   return [imageUrl, ...extras];
 }
 
@@ -147,6 +318,25 @@ export default function ProductPage() {
       }
     } finally {
       setAdding(false);
+    }
+  };
+
+  const shareProduct = async () => {
+    const shareData = {
+      title: product.name,
+      text: `${product.name} — ${product.price} ₽`,
+      url: typeof window !== "undefined" ? window.location.href : "",
+    };
+    try {
+      if (navigator.share) {
+        await navigator.share(shareData);
+      } else if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareData.url);
+        setCartMessage("Ссылка скопирована");
+        setCartMessageType("success");
+      }
+    } catch {
+      // Пользователь мог отменить диалог share — это нормальное поведение.
     }
   };
 
@@ -250,6 +440,14 @@ export default function ProductPage() {
                 className={`w-full py-3 text24 border border-black ${adding ? "bg-gray-300" : "bg-black text-white hover:bg-gray-900"}`}
               >
                 {adding ? "Добавляем..." : "В корзину"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void shareProduct()}
+                className="w-full mt-3 py-2 text16 border border-black bg-white hover:bg-gray-100 inline-flex items-center justify-center gap-2"
+              >
+                <Image src="/share-icon.png" alt="" width={16} height={16} />
+                <span>Поделиться</span>
               </button>
               <p className="text20 mt-6">Доставка в г.Москва</p>
             </aside>

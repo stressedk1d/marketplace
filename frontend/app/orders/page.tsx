@@ -82,6 +82,12 @@ function demoActions(status: OrderStatus): { label: string; next: OrderStatus }[
   }
 }
 
+function actionIcon(next: OrderStatus): string {
+  if (next === "cancelled") return "/delete-icon.png";
+  if (next === "paid") return "/purchases-icon.png";
+  return "/notifications-icon.png";
+}
+
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -253,12 +259,15 @@ export default function OrdersPage() {
                           type="button"
                           disabled={updatingId === order.id}
                           onClick={() => void patchOrderStatus(order.id, next)}
-                          className={`text16 border px-4 py-2 transition ${
+                          className={`text16 border px-4 py-2 transition inline-flex items-center gap-2 ${
                             updatingId === order.id
                               ? "border-gray-300 text-gray-400"
                               : "border-black bg-white hover:bg-gray-50"
                           }`}
                         >
+                          {updatingId !== order.id && (
+                            <Image src={actionIcon(next)} alt="" width={14} height={14} />
+                          )}
                           {updatingId === order.id ? "…" : label}
                         </button>
                       ))}

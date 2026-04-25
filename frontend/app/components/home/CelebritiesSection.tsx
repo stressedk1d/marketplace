@@ -29,7 +29,7 @@ export async function CelebritiesSection() {
           Знаменитости пока недоступны.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
           {celebrities.map((c) => (
             <Link
               key={c.id}
@@ -43,7 +43,7 @@ export async function CelebritiesSection() {
                     alt={c.name}
                     fill
                     unoptimized
-                    className="object-cover transition duration-500 group-hover:scale-105"
+                    className="object-contain p-4 transition duration-500 group-hover:scale-105"
                   />
                 ) : (
                   <span className="absolute inset-0 flex items-center justify-center text-4xl font-bold text-neutral-400 transition group-hover:text-neutral-600">

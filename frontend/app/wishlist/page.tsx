@@ -111,8 +111,9 @@ export default function WishlistPage() {
     <div className="min-h-screen py-8">
       <div className="container-main text-black">
         <h1 className="h32 mb-2">Избранное</h1>
-        <p className="text16 text-gray-600 mb-6">
-          Товары, которые вы отметили ♡ на карточках в каталоге.
+        <p className="text16 text-gray-600 mb-6 inline-flex items-center gap-2">
+          <Image src="/favorites-icon.png" alt="" width={16} height={16} />
+          <span>Товары, которые вы отметили на карточках в каталоге.</span>
         </p>
 
         {toast && (
@@ -148,10 +149,14 @@ export default function WishlistPage() {
                     )}
                   </Link>
                   <div className="absolute top-2 right-2 z-10">
-                    <WishlistHeart
-                      saved
-                      onToggle={() => void removeItem(product.id)}
-                    />
+                    <button
+                      type="button"
+                      onClick={() => void removeItem(product.id)}
+                      aria-label="Удалить из избранного"
+                      className="w-8 h-8 rounded-full bg-white/90 border border-black/15 flex items-center justify-center hover:bg-white"
+                    >
+                      <Image src="/delete-icon.png" alt="" width={14} height={14} />
+                    </button>
                   </div>
                 </div>
                 <div className="p-4 bg-[#f3f3f3] flex flex-col flex-1">

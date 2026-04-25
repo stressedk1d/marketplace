@@ -7,9 +7,9 @@ import Image from "next/image";
 import { useCart } from "@/lib/CartContext";
 
 const navItems = [
-  { label: "Одежда", href: "/catalog" },
-  { label: "Обувь", href: "/catalog" },
-  { label: "Аксессуары", href: "/catalog" },
+  { label: "Одежда", href: "/catalog?product_type=clothing" },
+  { label: "Обувь", href: "/catalog?product_type=shoes" },
+  { label: "Аксессуары", href: "/catalog?product_type=accessories" },
   { label: "Знаменитости", href: "/celebrities" },
   { label: "Бренды", href: "/brands" },
 ];
@@ -45,7 +45,16 @@ export default function Header() {
     <header className="bg-[#f3f3f3] border-b border-black/20">
       <div className="container-main py-5">
         <div className="flex items-center justify-between mb-4">
-          <p className="text16">г. Москва</p>
+          <p className="text16 inline-flex items-center gap-2">
+            <Image
+              src="/location-icon.png"
+              alt=""
+              width={16}
+              height={16}
+              className="opacity-70"
+            />
+            <span>г. Москва</span>
+          </p>
           <Link href="/" className="inline-flex h-12 items-center justify-center">
             <Image src="/logo.png" alt="VogueWay" width={140} height={56} priority className="max-h-12 w-auto object-contain" />
           </Link>
@@ -59,11 +68,13 @@ export default function Header() {
                 Войти
               </Link>
             )}
-            <Link href="/wishlist" className="text16">
-              Избранное
+            <Link href="/wishlist" className="text16 inline-flex items-center gap-2">
+              <Image src="/favorites-icon.png" alt="" width={16} height={16} />
+              <span>Избранное</span>
             </Link>
-            <Link href="/cart" className="text16 relative">
-              Корзина
+            <Link href="/cart" className="text16 relative inline-flex items-center gap-2">
+              <Image src="/cart-icon.png" alt="" width={16} height={16} />
+              <span>Корзина</span>
               {count > 0 && (
                 <span className="absolute -top-2 -right-4 bg-black text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
                   {count > 99 ? "99+" : count}
@@ -98,8 +109,8 @@ export default function Header() {
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-52 h-9 border border-black px-3 text16 bg-transparent"
             />
-            <button type="submit" className="h-9 px-4 bg-black text-white text16">
-              🔍
+            <button type="submit" className="h-9 px-4 bg-black text-white text16 inline-flex items-center justify-center">
+              <Image src="/search-icon.png" alt="Поиск" width={16} height={16} />
             </button>
           </form>
         </div>

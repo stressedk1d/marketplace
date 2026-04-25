@@ -41,3 +41,9 @@ export function getRecentlyViewed(): RecentProductSnapshot[] {
   if (typeof window === "undefined") return [];
   return parseList(localStorage.getItem(RECENTLY_VIEWED_KEY));
 }
+
+export function replaceRecentlyViewed(items: RecentProductSnapshot[]): void {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(items.slice(0, 10)));
+  window.dispatchEvent(new Event("vw-recently-viewed"));
+}

@@ -44,14 +44,14 @@ export default function BrandsPage() {
               href={`/brands/${b.slug}`}
               className="border border-black/15 bg-white p-8 flex flex-col items-center text-center hover:border-black transition"
             >
-              <div className="relative w-28 h-28 mb-5 bg-[#f3f3f3] rounded-full overflow-hidden border border-black/10">
+              <div className="relative w-32 h-24 mb-5 bg-[#f8f8f8] rounded-xl overflow-hidden border border-black/10">
                 {b.logo_url ? (
                   <Image
                     src={b.logo_url}
                     alt={b.name}
                     fill
                     unoptimized
-                    className="object-cover"
+                    className="object-contain p-2"
                   />
                 ) : (
                   <span className="absolute inset-0 flex items-center justify-center text-3xl font-semibold text-gray-400">

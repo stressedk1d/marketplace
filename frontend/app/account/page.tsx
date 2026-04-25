@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { apiUrl, apiFetch } from "@/lib/api";
 
 interface Order {
@@ -72,10 +73,7 @@ export default function AccountPage() {
                   <p className="text16 text-gray-400 text-sm">{email}</p>
                 </div>
               </div>
-              {/* колокольчик */}
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-                <path d="M12 22c1.1 0 2-.9 2-2h-4a2 2 0 002 2zm6-6V11c0-3.07-1.64-5.64-4.5-6.32V4a1.5 1.5 0 00-3 0v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z" fill="#888"/>
-              </svg>
+              <Image src="/notifications-icon.png" alt="Уведомления" width={20} height={20} />
             </div>
 
             {/* Финансы */}
@@ -141,15 +139,15 @@ export default function AccountPage() {
             {/* Избранное / Покупки / Ждут оценки */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "Избранное", icon: "♡", sub: "нет товаров" },
-                { label: "Покупки",   icon: "🛍", sub: "Смотреть" },
-                { label: "Ждут оценки", icon: "🔥", sub: "нет товаров" },
+                { label: "Избранное", icon: "/favorites-icon.png", sub: "нет товаров" },
+                { label: "Покупки", icon: "/purchases-icon.png", sub: "Смотреть" },
+                { label: "Ждут оценки", icon: "/ratings-icon.png", sub: "нет товаров" },
               ].map((block) => (
                 <div key={block.label} className="border border-black/15 bg-white p-4 flex flex-col justify-between min-h-[100px]">
                   <p className="text16 font-semibold">{block.label}</p>
                   <div className="flex items-end justify-between">
                     <p className="text16 text-gray-400 text-sm">{block.sub}</p>
-                    <span className="text-2xl">{block.icon}</span>
+                    <Image src={block.icon} alt="" width={24} height={24} className="opacity-85" />
                   </div>
                 </div>
               ))}
@@ -160,15 +158,15 @@ export default function AccountPage() {
               <h2 className="text20 font-semibold mb-4">Сервис и помощь</h2>
               <div className="grid grid-cols-3 gap-3">
                 {[
-                  { label: "Написать в поддержку", icon: "💬" },
-                  { label: "Вернуть товар",         icon: "📦" },
-                  { label: "Частые вопросы",        icon: "❓" },
+                  { label: "Написать в поддержку", icon: "/support-icon.png" },
+                  { label: "Вернуть товар", icon: "/return-item-icon.png" },
+                  { label: "Частые вопросы", icon: "/help-icon.png" },
                 ].map((btn) => (
                   <button
                     key={btn.label}
                     className="flex items-center justify-center gap-2 py-2.5 text16 bg-black text-white hover:bg-gray-900"
                   >
-                    <span>{btn.icon}</span>
+                    <Image src={btn.icon} alt="" width={16} height={16} />
                     <span>{btn.label}</span>
                   </button>
                 ))}

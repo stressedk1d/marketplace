@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 from models import OrderStatus
 
@@ -90,12 +90,39 @@ class ProductResponse(BaseModel):
     description: Optional[str] = None
     price: float
     image_url: Optional[str] = None
+    images: list[str] = Field(default_factory=list)
     category_id: Optional[int] = None
     brand_id: Optional[int] = None
     collection_id: Optional[int] = None
     views_count: int = 0
+    product_type: str
     brand: Optional[BrandBrief] = None
     collection: Optional[CollectionBrief] = None
+
+
+class FacetBrandCount(BaseModel):
+    slug: str
+    count: int
+    selected: bool = False
+
+
+class FacetProductTypeCount(BaseModel):
+    value: str
+    count: int
+    selected: bool = False
+
+
+class FacetPriceRangeCount(BaseModel):
+    min: int
+    max: Optional[int] = None
+    count: int
+    selected: bool = False
+
+
+class ProductFacets(BaseModel):
+    brands: list[FacetBrandCount] = Field(default_factory=list)
+    product_types: list[FacetProductTypeCount] = Field(default_factory=list)
+    price_ranges: list[FacetPriceRangeCount] = Field(default_factory=list)
 
 
 class CategoryResponse(BaseModel):
@@ -110,6 +137,7 @@ class ProductListResponse(BaseModel):
     total: int
     limit: int
     offset: int
+    facets: ProductFacets = Field(default_factory=ProductFacets)
 
 
 # ── Cart ──────────────────────────────────────────────────────────────────────

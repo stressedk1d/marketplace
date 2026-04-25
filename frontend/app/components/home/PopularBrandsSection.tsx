@@ -36,14 +36,14 @@ export async function PopularBrandsSection() {
               href={`/brands/${b.slug}`}
               className="group flex flex-col items-center rounded-2xl border border-neutral-200/90 bg-white p-6 text-center shadow-sm transition duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-lg"
             >
-              <div className="relative mb-4 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-gradient-to-br from-neutral-100 to-neutral-200 ring-1 ring-neutral-200 transition group-hover:ring-neutral-300">
+              <div className="relative mb-4 flex h-24 w-32 items-center justify-center overflow-hidden rounded-xl bg-gradient-to-br from-neutral-100 to-neutral-200 ring-1 ring-neutral-200 transition group-hover:ring-neutral-300">
                 {b.logo_url ? (
                   <Image
                     src={b.logo_url}
                     alt=""
                     fill
                     unoptimized
-                    className="object-cover"
+                    className="object-contain p-2"
                   />
                 ) : (
                   <span className="text-3xl font-bold text-neutral-400 transition group-hover:text-neutral-600">
