@@ -15,3 +15,7 @@ frontend/.next/
 # Local envs
 **/.env
 **/.env.local
+
+# Дипломные / личные документы (не в репозитории)
+/Gromov.docx
+/Metodicha_2026.doc
