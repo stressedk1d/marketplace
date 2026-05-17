@@ -323,6 +323,7 @@ export default function ProductPage() {
   };
 
   const shareProduct = async () => {
+    if (!product) return;
     const shareData = {
       title: product.name,
       text: `${product.name} — ${product.price} ₽`,
