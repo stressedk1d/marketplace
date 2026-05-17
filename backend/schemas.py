@@ -32,6 +32,10 @@ class VerifyEmailRequest(BaseModel):
     verification_code: str
 
 
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -184,3 +188,44 @@ class CheckoutResponse(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
+
+
+# ── Admin ─────────────────────────────────────────────────────────────────────
+
+class AdminMeResponse(BaseModel):
+    email: EmailStr
+    full_name: Optional[str] = None
+    is_admin: bool = True
+
+
+class AdminStatsResponse(BaseModel):
+    users_count: int
+    products_count: int
+    orders_count: int
+    revenue_total: float
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    is_verified: bool
+    is_admin: bool
+
+
+class AdminOrderResponse(OrderResponse):
+    user_id: int
+    user_email: Optional[str] = None
+    user_full_name: Optional[str] = None
+
+
+# ── Site / maintenance ────────────────────────────────────────────────────────
+
+class MaintenanceStatusResponse(BaseModel):
+    enabled: bool
+    message: str
+
+
+class MaintenanceUpdateRequest(BaseModel):
+    enabled: bool
+    message: Optional[str] = None

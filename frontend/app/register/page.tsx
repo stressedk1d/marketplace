@@ -32,7 +32,7 @@ export default function RegisterPage() {
       const data = await response.json();
 
       if (response.ok) {
-        setMessage("Успех! Переходим ко входу...");
+        setMessage("Регистрация успешна! Переходим ко входу...");
         setTimeout(() => {
           router.push("/login");
         }, 1500);

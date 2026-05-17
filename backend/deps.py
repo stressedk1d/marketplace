@@ -21,3 +21,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         return user
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Невалидный токен")
+
+
+def get_current_admin(user: models.User = Depends(get_current_user)) -> models.User:
+    if not user.is_admin:
+        raise HTTPException(status_code=403, detail="Доступ только для администратора")
+    return user

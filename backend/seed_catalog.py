@@ -172,6 +172,7 @@ ADIDAS_IMAGE_SETS: dict[str, list[str]] = {
         "/images/brands/adidas/Adidas Adicolor SST Pants1.jpg",
         "/images/brands/adidas/Adidas Adicolor SST Pants2.jpg",
         "/images/brands/adidas/Adidas Adicolor SST Pants3.jpg",
+        "/images/brands/adidas/Adidas Adicolor SST Pants 5.png",
     ],
     "Adidas Forum Low": [
         "/images/brands/adidas/Adidas Forum Low.webp",

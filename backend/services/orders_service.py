@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 import models
 from models import OrderStatus
 from schemas import CheckoutResponse, OrderItemResponse, OrderResponse
+from services import email_service
 
 _ALLOWED_TRANSITIONS: frozenset[tuple[OrderStatus, OrderStatus]] = frozenset(
     {
@@ -89,12 +90,45 @@ def checkout(user_id: int, db: Session) -> CheckoutResponse:
     db.commit()
     db.refresh(order)
 
+    _notify_order_created(order, db)
+
     return CheckoutResponse(
         order_id=order.id,
         status=_as_order_status(order.status),
         total_amount=order.total_amount,
         items_count=len(cart_items),
     )
+
+
+def _notify_order_created(order: models.Order, db: Session) -> None:
+    user = db.query(models.User).filter(models.User.id == order.user_id).first()
+    if not user or not user.email:
+        return
+
+    order_with_items = (
+        db.query(models.Order)
+        .options(joinedload(models.Order.items).joinedload(models.OrderItem.product))
+        .filter(models.Order.id == order.id)
+        .first()
+    )
+    if not order_with_items:
+        return
+
+    items_for_email: list[tuple[str, int, float]] = []
+    for item in order_with_items.items:
+        name = item.product.name if item.product else f"Товар #{item.product_id}"
+        items_for_email.append((name, item.quantity, float(item.price_at_purchase)))
+
+    try:
+        email_service.send_order_confirmation_email(
+            to_email=user.email,
+            full_name=user.full_name,
+            order_id=order_with_items.id,
+            total_amount=float(order_with_items.total_amount),
+            items=items_for_email,
+        )
+    except Exception:
+        pass
 
 
 def get_user_orders(user_id: int, db: Session) -> list[OrderResponse]:
@@ -129,6 +163,32 @@ def update_order_status(
         raise HTTPException(status_code=404, detail="Заказ не найден")
     if order.user_id != user_id:
         raise HTTPException(status_code=403, detail="Нет доступа к этому заказу")
+
+    current = _as_order_status(order.status)
+    new_status = _as_order_status(new_status)
+    if current == new_status:
+        return _order_to_response(order)
+
+    _validate_status_transition(current, new_status)
+    order.status = new_status
+    db.commit()
+    db.refresh(order)
+    return _order_to_response(order)
+
+
+def admin_update_order_status(
+    order_id: int,
+    new_status: OrderStatus,
+    db: Session,
+) -> OrderResponse:
+    order = (
+        db.query(models.Order)
+        .options(joinedload(models.Order.items).joinedload(models.OrderItem.product))
+        .filter(models.Order.id == order_id)
+        .first()
+    )
+    if not order:
+        raise HTTPException(status_code=404, detail="Заказ не найден")
 
     current = _as_order_status(order.status)
     new_status = _as_order_status(new_status)

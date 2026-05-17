@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useCart } from "@/lib/CartContext";
+import { apiUrl } from "@/lib/api";
 
 const navItems = [
   { label: "Одежда", href: "/catalog?product_type=clothing" },
@@ -16,6 +17,7 @@ const navItems = [
 
 export default function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
   const router = useRouter();
@@ -25,7 +27,15 @@ export default function Header() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
-    if (token) refreshCart();
+    setIsAdmin(false);
+    if (token) {
+      refreshCart();
+      fetch(apiUrl("/admin/me"), {
+        headers: { Authorization: `Bearer ${token}` },
+      })
+        .then((r) => setIsAdmin(r.ok))
+        .catch(() => setIsAdmin(false));
+    }
   }, [pathname, refreshCart]);
 
   const handleLogout = () => {
@@ -60,9 +70,16 @@ export default function Header() {
           </Link>
           <div className="flex items-center gap-5">
             {isLoggedIn ? (
-              <Link href="/account" className="text16 border border-black px-4 py-1.5">
-                Аккаунт
-              </Link>
+              <>
+                {isAdmin && (
+                  <Link href="/admin" className="text16 border border-black px-4 py-1.5 bg-black text-white">
+                    Админ
+                  </Link>
+                )}
+                <Link href="/account" className="text16 border border-black px-4 py-1.5">
+                  Аккаунт
+                </Link>
+              </>
             ) : (
               <Link href="/login" className="text16 border border-black px-4 py-1.5">
                 Войти

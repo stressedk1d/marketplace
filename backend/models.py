@@ -40,6 +40,7 @@ class User(Base):
     password_hash = Column(String)
     full_name = Column(String)
     is_verified = Column(Boolean, default=False)
+    is_admin = Column(Boolean, nullable=False, default=False)
     verification_code = Column(String, nullable=True)
     code_expires_at = Column(DateTime, nullable=True)
 
@@ -195,3 +196,17 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
+
+
+class SiteConfig(Base):
+    """Глобальные настройки сайта (одна строка, id=1)."""
+
+    __tablename__ = "site_config"
+
+    id = Column(Integer, primary_key=True)
+    maintenance_enabled = Column(Boolean, nullable=False, default=False)
+    maintenance_message = Column(
+        String,
+        nullable=False,
+        default="Сайт временно недоступен — ведутся технические работы. Зайдите позже.",
+    )

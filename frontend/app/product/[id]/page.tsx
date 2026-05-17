@@ -94,6 +94,7 @@ const EXTRA_IMAGES_BY_PRIMARY: Record<string, string[]> = {
     "/images/brands/adidas/Adidas Adicolor SST Pants1.jpg",
     "/images/brands/adidas/Adidas Adicolor SST Pants2.jpg",
     "/images/brands/adidas/Adidas Adicolor SST Pants3.jpg",
+    "/images/brands/adidas/Adidas Adicolor SST Pants 5.png",
   ],
   "/images/brands/adidas/Adidas Forum Low.webp": [
     "/images/brands/adidas/Adidas Forum Low1.webp",

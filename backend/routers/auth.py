@@ -11,7 +11,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=MessageResponse)
 def register(user_data: UserCreate, db: Session = Depends(get_db)) -> MessageResponse:
     auth_service.register_user(user_data.email, user_data.password, user_data.full_name, db)
-    return MessageResponse(message="Регистрация успешна")
+    return MessageResponse(message="Регистрация успешна. Добро пожаловать!")
 
 
 @router.post("/login", response_model=TokenResponse)

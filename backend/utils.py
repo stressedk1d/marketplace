@@ -1,7 +1,5 @@
 import random
-import smtplib
 from datetime import UTC, datetime, timedelta
-from email.mime.text import MIMEText
 
 import bcrypt
 import jwt
@@ -33,30 +31,3 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 def generate_code() -> str:
     return str(random.randint(100000, 999999))
-
-
-def send_verification_email(to_email: str, code: str) -> None:
-    """
-    Отправляет код подтверждения на email через SMTP.
-    Fallback: если SMTP не настроен — выводит код в лог.
-    """
-    if not settings.smtp_host or not settings.smtp_user:
-        print(f"[EMAIL FALLBACK] Verification code for {to_email}: {code}")
-        return
-
-    msg = MIMEText(
-        f"Ваш код подтверждения: {code}\n\n"
-        f"Код действителен {settings.verification_code_ttl_minutes} минут.",
-        "plain",
-        "utf-8",
-    )
-    msg["Subject"] = "Код подтверждения"
-    msg["From"] = settings.email_from
-    msg["To"] = to_email
-
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port, timeout=10) as server:
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-        server.login(settings.smtp_user, settings.smtp_password)
-        server.sendmail(settings.email_from, [to_email], msg.as_string())

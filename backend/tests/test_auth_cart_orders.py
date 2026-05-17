@@ -10,7 +10,10 @@ from services import auth_service, cart_service, orders_service
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
 
-def test_register_success(db: Session):
+def test_register_success(db: Session, monkeypatch):
+    monkeypatch.setattr(
+        "services.auth_service.email_service.send_welcome_email", lambda *a, **k: None
+    )
     auth_service.register_user("new@example.com", "pass123", "New User", db)
     user = db.query(models.User).filter(models.User.email == "new@example.com").first()
     assert user is not None
@@ -93,6 +96,32 @@ def test_checkout_clears_cart(db: Session, test_user: models.User, test_product:
     cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
     orders_service.checkout(test_user.id, db)
     assert cart_service.get_cart(test_user.id, db) == []
+
+
+def test_checkout_sends_order_email(
+    db: Session, test_user: models.User, test_product: models.Product, monkeypatch
+):
+    sent: list[dict] = []
+
+    def _fake_order_email(to_email, full_name, order_id, total_amount, items):
+        sent.append(
+            {
+                "to_email": to_email,
+                "order_id": order_id,
+                "total_amount": total_amount,
+                "items": items,
+            }
+        )
+
+    monkeypatch.setattr(
+        "services.orders_service.email_service.send_order_confirmation_email",
+        _fake_order_email,
+    )
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    out = orders_service.checkout(test_user.id, db)
+    assert len(sent) == 1
+    assert sent[0]["to_email"] == test_user.email
+    assert sent[0]["order_id"] == out.order_id
 
 
 def test_checkout_empty_cart(db: Session, test_user: models.User):
