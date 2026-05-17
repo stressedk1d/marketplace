@@ -2,7 +2,7 @@ from io import BytesIO
 from typing import Any
 
 import httpx
-from fastapi import APIRouter, Depends, File, Request, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile
 from PIL import Image as PILImage
 from sqlalchemy.orm import Session, joinedload
 
@@ -69,6 +69,12 @@ async def ai_photo_search(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
+    if settings.disable_ai_search:
+        raise HTTPException(
+            status_code=503,
+            detail="ИИ-поиск отключён на этом сервере (DISABLE_AI_SEARCH=true).",
+        )
+
     from sentence_transformers import util
 
     model_ai = _get_or_load_model(request)

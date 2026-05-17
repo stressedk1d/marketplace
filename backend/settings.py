@@ -54,6 +54,7 @@ class Settings:
     # Verification code TTL in minutes
     verification_code_ttl_minutes: int = int(os.getenv("VERIFICATION_CODE_TTL_MINUTES", "10"))
     debug: bool = os.getenv("DEBUG", "true").lower() == "true"
+    disable_ai_search: bool = os.getenv("DISABLE_AI_SEARCH", "false").lower() == "true"
 
     # Comma-separated list: http://localhost:3000,http://127.0.0.1:3000
     cors_origins_raw: str = os.getenv("CORS_ORIGINS", "http://localhost:3000")
