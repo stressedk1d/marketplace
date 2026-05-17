@@ -204,7 +204,12 @@ class SiteConfig(Base):
     __tablename__ = "site_config"
 
     id = Column(Integer, primary_key=True)
-    maintenance_enabled = Column(Boolean, nullable=False, default=False)
+    maintenance_enabled = Column(
+        Boolean,
+        nullable=False,
+        default=False,
+        server_default="false",
+    )
     maintenance_message = Column(
         String,
         nullable=False,

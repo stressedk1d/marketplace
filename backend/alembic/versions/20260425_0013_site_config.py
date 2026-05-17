@@ -35,7 +35,7 @@ def upgrade() -> None:
     op.execute(
         sa.text(
             "INSERT INTO site_config (id, maintenance_enabled, maintenance_message) "
-            "VALUES (1, 0, :msg)"
+            "VALUES (1, false, :msg)"
         ).bindparams(msg=DEFAULT_MESSAGE)
     )
 

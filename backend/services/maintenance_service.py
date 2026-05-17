@@ -1,3 +1,4 @@
+from sqlalchemy import false as sa_false
 from sqlalchemy.orm import Session
 
 import models
@@ -14,7 +15,7 @@ def ensure_site_config(db: Session) -> models.SiteConfig:
         return config
     config = models.SiteConfig(
         id=SITE_CONFIG_ID,
-        maintenance_enabled=False,
+        maintenance_enabled=sa_false(),
         maintenance_message=DEFAULT_MESSAGE,
     )
     db.add(config)
