@@ -11,7 +11,11 @@ COPY requirements-prod.txt .
 RUN pip install --no-cache-dir -r requirements-prod.txt
 
 ARG INSTALL_AI=1
-RUN if [ "$INSTALL_AI" = "1" ]; then pip install --no-cache-dir sentence-transformers; fi
+# CPU-only PyTorch (без CUDA ~1 GB) — на VPS нет видеокарты
+RUN if [ "$INSTALL_AI" = "1" ]; then \
+    pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir sentence-transformers; \
+    fi
 
 COPY . .
 
