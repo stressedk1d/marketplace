@@ -1,7 +1,18 @@
-export const API_BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+/** Браузер — публичный URL; SSR в Docker — внутренний backend:8000 */
+export function getApiBaseUrl(): string {
+  const internal = process.env.API_INTERNAL_URL?.trim();
+  if (typeof window === "undefined" && internal) {
+    return internal.replace(/\/$/, "");
+  }
+  return (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
+    /\/$/,
+    ""
+  );
+}
 
-export const apiUrl = (path: string) => `${API_BASE_URL}${path}`;
+export const API_BASE_URL = getApiBaseUrl();
+
+export const apiUrl = (path: string) => `${getApiBaseUrl()}${path}`;
 
 /**
  * fetch с автоматическим редиректом на /login при 401.

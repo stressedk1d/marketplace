@@ -1,8 +1,8 @@
 import Image from "next/image";
 import Link from "next/link";
 
-const HERO_IMAGE =
-  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80";
+/** Локальный файл — Unsplash с VPS часто недоступен */
+const HERO_IMAGE = "/images/brands/nike/Nike Air Zoom Pegasus 41.webp";
 
 export function HomeHero() {
   return (
