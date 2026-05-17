@@ -70,7 +70,7 @@ git clone git@github.com:stressedk1d/marketplace.git
 
 1. Установите [Coolify](https://coolify.io) на VPS (одна команда с их сайта).
 2. **+ New Resource → Application → Private GitHub App** (или Deploy Key).
-3. Репозиторий, ветка `main` (или `cursor/railway-docker-deploy`).
+3. Репозиторий, ветка `main`.
 4. **Build Pack: Docker Compose**, путь `docker-compose.yml`.
 5. Переменные из `.env.example` вставить в UI Coolify.
 6. Deploy.
