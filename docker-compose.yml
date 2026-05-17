@@ -3,7 +3,8 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    # Amazon ECR Public — без лимита Docker Hub на анонимные pull
+    image: public.ecr.aws/docker/library/postgres:16-alpine
     restart: unless-stopped
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-vogueway}
@@ -64,7 +65,7 @@ services:
       - "3000:3000"
 
   nginx:
-    image: nginx:1.27-alpine
+    image: public.ecr.aws/docker/library/nginx:1.27-alpine
     restart: unless-stopped
     depends_on:
       - frontend
