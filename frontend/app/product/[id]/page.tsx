@@ -353,7 +353,7 @@ export default function ProductPage() {
 
   return (
     <>
-      <div className="min-h-screen py-8">
+      <div className="min-h-screen py-4 sm:py-8">
         <div className="container-main text-black">
 
           {cartMessage && (
@@ -369,18 +369,18 @@ export default function ProductPage() {
                 const [main, ...rest] = imgs;
                 return (
                   <>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div onClick={() => setLightbox(main)} className="relative h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                      <div onClick={() => setLightbox(main)} className="relative h-[min(72vw,380px)] sm:h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
                         <Image src={main} alt={product.name} fill unoptimized className="object-cover" />
                       </div>
-                      <div onClick={() => setLightbox(rest[0] ?? main)} className="relative h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
+                      <div onClick={() => setLightbox(rest[0] ?? main)} className="relative h-[min(72vw,380px)] sm:h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
                         <Image src={rest[0] ?? main} alt={product.name} fill unoptimized className="object-cover" />
                       </div>
                     </div>
                     {rest.length > 1 && (
-                      <div className="grid grid-cols-3 gap-4 mt-4">
+                      <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:grid-cols-3 sm:gap-4">
                         {rest.slice(1).map((src, i) => (
-                          <div key={i} onClick={() => setLightbox(src)} className="relative h-40 bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
+                          <div key={i} onClick={() => setLightbox(src)} className="relative h-28 sm:h-40 bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
                             <Image src={src} alt={product.name} fill unoptimized className="object-cover" />
                           </div>
                         ))}
@@ -391,9 +391,9 @@ export default function ProductPage() {
               })()}
             </section>
 
-            <aside className="border border-black/20 p-5 bg-[#f3f3f3] h-fit">
-              <div className="flex items-start justify-between gap-3 mb-2">
-                <h1 className="h32">Бренд/знаменитость</h1>
+            <aside className="h-fit border border-black/20 bg-[#f3f3f3] p-4 sm:p-5">
+              <div className="mb-2 flex items-start justify-between gap-3">
+                <p className="text16 text-gray-500">Бренд/знаменитость</p>
                 <WishlistHeart
                   saved={wishlistIds.has(product.id)}
                   onToggle={() =>
@@ -404,7 +404,7 @@ export default function ProductPage() {
                   }
                 />
               </div>
-              <p className="text20 mb-6">{product.name}</p>
+              <h1 className="h32 mb-4 sm:mb-6">{product.name}</h1>
               {product.brand && (
                 <p className="text16 text-gray-600 mb-2">
                   {product.brand.is_celebrity ? "Знаменитость" : "Бренд"}:{" "}

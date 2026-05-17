@@ -19,7 +19,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-background text-neutral-900">
       <HomeHero />
-      <div className="container-main space-y-20 py-16 md:space-y-24 md:py-20">
+      <div className="container-main space-y-12 py-10 sm:space-y-20 sm:py-16 md:space-y-24 md:py-20">
         <Suspense fallback={<BrandsSectionSkeleton />}>
           <PopularBrandsSection />
         </Suspense>

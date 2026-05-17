@@ -52,7 +52,7 @@ export default function Footer() {
     <>
       {isHomePage ? (
         <section className="container-main py-10">
-          <h2 className="h32 mb-4">Для клиентов</h2>
+          <h2 className="h32 mb-4 text-2xl sm:text-3xl">Для клиентов</h2>
           <div className="flex flex-wrap gap-3 mb-4">
             {["Доставка", "Оплата", "Возврат"].map((item) => (
               <button
@@ -75,7 +75,7 @@ export default function Footer() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {footerColumns.map((column) => (
               <section key={column.title}>
-                <h3 className="h32 mb-4">{column.title}</h3>
+                <h3 className="mb-4 text-xl font-semibold sm:text-2xl">{column.title}</h3>
                 <ul className="space-y-2">
                   {column.links.map((link) => (
                     <li key={link} className="text16">
