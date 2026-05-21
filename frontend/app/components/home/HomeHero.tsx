@@ -1,20 +1,35 @@
+"use client";
+
 import Image from "next/image";
 import Link from "next/link";
+import { useState } from "react";
 
-/** Локальный файл — Unsplash с VPS часто недоступен */
-const HERO_IMAGE = "/images/brands/nike/Nike Air Zoom Pegasus 41.webp";
+/** Общий фон магазина (оригинал). unoptimized — грузится в браузере, не с VPS при сборке */
+const HERO_REMOTE =
+  "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1920&q=80";
 
 export function HomeHero() {
+  const [useFallback, setUseFallback] = useState(false);
+
   return (
     <section className="relative min-h-[min(78vh,720px)] w-full overflow-hidden bg-neutral-900">
-      <Image
-        src={HERO_IMAGE}
-        alt=""
-        fill
-        priority
-        className="object-cover opacity-90"
-        sizes="100vw"
-      />
+      {!useFallback ? (
+        <Image
+          src={HERO_REMOTE}
+          alt=""
+          fill
+          priority
+          unoptimized
+          className="object-cover opacity-90"
+          sizes="100vw"
+          onError={() => setUseFallback(true)}
+        />
+      ) : (
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-neutral-800 via-neutral-700 to-neutral-900"
+          aria-hidden
+        />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/45 to-black/30" />
       <div className="relative z-10 flex min-h-[min(78vh,720px)] flex-col items-center justify-center px-6 py-24 text-center text-white">
         <p className="animate-home-in mb-3 text-sm font-medium uppercase tracking-[0.25em] text-white/80">
