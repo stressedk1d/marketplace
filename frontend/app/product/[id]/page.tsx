@@ -443,10 +443,10 @@ export default function ProductPage() {
                   <>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
                       <div onClick={() => setLightbox(main)} className="relative h-[min(72vw,380px)] sm:h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
-                        <Image src={main} alt={product.name} fill unoptimized className="object-cover" />
+                        <Image src={main} alt={product.name} fill unoptimized sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" />
                       </div>
                       <div onClick={() => setLightbox(rest[0] ?? main)} className="relative h-[min(72vw,380px)] sm:h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
-                        <Image src={rest[0] ?? main} alt={product.name} fill unoptimized className="object-cover" />
+                        <Image src={rest[0] ?? main} alt={product.name} fill unoptimized sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" />
                       </div>
                     </div>
                     {rest.length > 1 && (
@@ -571,7 +571,7 @@ export default function ProductPage() {
           </div>
 
           <section className="mb-10">
-            <div className="flex gap-0 border-b border-black/15 mb-6">
+            <div role="tablist" aria-label="Информация о товаре" className="flex gap-0 border-b border-black/15 mb-6">
               {([
                 { key: "about" as TabKey, label: "О товаре" },
                 { key: "brand" as TabKey, label: "О бренде" },
@@ -580,11 +580,15 @@ export default function ProductPage() {
                 <button
                   key={tab.key}
                   type="button"
+                  role="tab"
+                  aria-selected={activeTab === tab.key}
+                  aria-controls={`tabpanel-${tab.key}`}
+                  id={`tab-${tab.key}`}
                   onClick={() => setActiveTab(tab.key)}
                   className={`px-6 py-3 text20 font-semibold transition-colors relative ${
                     activeTab === tab.key
                       ? "text-black"
-                      : "text-gray-400 hover:text-gray-600"
+                      : "text-gray-500 hover:text-gray-700"
                   }`}
                 >
                   {tab.label}
@@ -596,7 +600,7 @@ export default function ProductPage() {
             </div>
 
             {activeTab === "about" && (
-              <div className="max-w-4xl space-y-4">
+              <div role="tabpanel" id="tabpanel-about" aria-labelledby="tab-about" className="max-w-4xl space-y-4">
                 <p className="text20">{product.description || "Описание товара будет добавлено продавцом."}</p>
                 {product.collection && (
                   <p className="text16 text-gray-600">
@@ -610,7 +614,7 @@ export default function ProductPage() {
             )}
 
             {activeTab === "brand" && (
-              <div className="max-w-4xl space-y-4">
+              <div role="tabpanel" id="tabpanel-brand" aria-labelledby="tab-brand" className="max-w-4xl space-y-4">
                 {product.brand ? (
                   <>
                     <h3 className="text20 font-semibold">{product.brand.name}</h3>
@@ -633,7 +637,7 @@ export default function ProductPage() {
             )}
 
             {activeTab === "reviews" && (
-              <div className="max-w-4xl space-y-6">
+              <div role="tabpanel" id="tabpanel-reviews" aria-labelledby="tab-reviews" className="max-w-4xl space-y-6">
                 {/* Review form */}
                 <div className="border border-black/15 bg-white p-5">
                   <h3 className="text20 font-semibold mb-3">Оставить отзыв</h3>
@@ -643,6 +647,7 @@ export default function ProductPage() {
                         key={star}
                         type="button"
                         onClick={() => setReviewRating(star)}
+                        aria-label={`Оценка ${star} из 5`}
                         className={`text-2xl ${star <= reviewRating ? "text-yellow-500" : "text-gray-300"}`}
                       >
                         ★

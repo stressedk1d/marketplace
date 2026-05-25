@@ -27,16 +27,27 @@ export default function Header() {
   useEffect(() => {
     const token = localStorage.getItem("token");
     setIsLoggedIn(!!token);
-    setIsAdmin(false);
     if (token) {
       refreshCart();
-      fetch(apiUrl("/admin/me"), {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-        .then((r) => setIsAdmin(r.ok))
-        .catch(() => setIsAdmin(false));
+    } else {
+      setIsAdmin(false);
     }
   }, [pathname, refreshCart]);
+
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) { setIsAdmin(false); return; }
+    const cached = sessionStorage.getItem("vw-is-admin");
+    if (cached !== null) { setIsAdmin(cached === "1"); return; }
+    fetch(apiUrl("/admin/me"), {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((r) => {
+        setIsAdmin(r.ok);
+        sessionStorage.setItem("vw-is-admin", r.ok ? "1" : "0");
+      })
+      .catch(() => setIsAdmin(false));
+  }, []);
 
   useEffect(() => {
     setMenuOpen(false);

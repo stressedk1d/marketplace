@@ -43,6 +43,7 @@ export async function CelebritiesSection() {
                     alt={c.name}
                     fill
                     unoptimized
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
                     className="object-contain p-4 transition duration-500 group-hover:scale-105"
                   />
                 ) : (

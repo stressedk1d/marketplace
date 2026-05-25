@@ -51,6 +51,7 @@ export default function ProductGrid({
                 alt={product.name}
                 fill
                 unoptimized
+                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                 className={`object-cover transition-transform ${tokens.transition.base} ${tokens.transition.easing} group-hover:scale-[1.02]`}
               />
             </Link>

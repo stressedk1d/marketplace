@@ -80,12 +80,15 @@ export default function FaqPage() {
                 <button
                   type="button"
                   onClick={() => toggle(idx)}
+                  aria-expanded={isOpen}
+                  aria-controls={`faq-answer-${idx}`}
                   className="flex w-full items-center justify-between px-6 py-4 text-left"
                 >
                   <span className="text18 font-medium pr-4">
                     {item.question}
                   </span>
                   <span
+                    aria-hidden="true"
                     className="shrink-0 text-xl transition-transform duration-200"
                     style={{
                       transform: isOpen ? "rotate(45deg)" : "rotate(0deg)",
@@ -94,13 +97,19 @@ export default function FaqPage() {
                     +
                   </span>
                 </button>
-                {isOpen && (
-                  <div className="px-6 pb-5">
+                <div
+                  id={`faq-answer-${idx}`}
+                  role="region"
+                  aria-labelledby={`faq-question-${idx}`}
+                  hidden={!isOpen}
+                  className={isOpen ? "px-6 pb-5" : ""}
+                >
+                  {isOpen && (
                     <p className="text16 leading-relaxed text-neutral-600">
                       {item.answer}
                     </p>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             );
           })}

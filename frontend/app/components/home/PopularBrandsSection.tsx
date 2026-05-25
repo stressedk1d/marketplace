@@ -43,6 +43,7 @@ export async function PopularBrandsSection() {
                     alt={`Логотип ${b.name}`}
                     fill
                     unoptimized
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
                     className="object-contain p-2"
                   />
                 ) : (

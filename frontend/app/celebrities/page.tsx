@@ -1,42 +1,17 @@
-"use client";
-
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { apiUrl } from "@/lib/api";
-import type { CatalogBrand } from "@/lib/catalog-types";
+import { fetchCelebrityBrands } from "@/lib/catalog-fetch";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 
-export default function CelebritiesListPage() {
-  const [brands, setBrands] = useState<CatalogBrand[]>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    fetch(apiUrl("/brands?is_celebrity=true"))
-      .then((r) => r.json())
-      .then((data: CatalogBrand[]) => {
-        if (!cancelled) setBrands(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setBrands([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+export default async function CelebritiesListPage() {
+  const brands = await fetchCelebrityBrands();
 
   return (
     <div className="min-h-screen py-8">
       <div className="container-main text-black">
         <Breadcrumbs items={[{ label: "Знаменитости" }]} />
         <h1 className="h32 mb-8">Знаменитости</h1>
-        {loading ? (
-          <p className="text16 text-gray-500">Загрузка…</p>
-        ) : brands.length === 0 ? (
+        {brands.length === 0 ? (
           <p className="text16 text-gray-500">Список пуст.</p>
         ) : (
           <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -53,6 +28,7 @@ export default function CelebritiesListPage() {
                       alt={brand.name}
                       fill
                       unoptimized
+                      sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 20vw"
                       className="object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   ) : (
