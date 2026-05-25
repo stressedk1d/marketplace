@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+
+export const metadata: Metadata = {
+  title: "Контакты",
+  description: "Свяжитесь с VogueWay — электронная почта, телефон и адрес. Мы всегда на связи.",
+};
 
 export default function ContactsPage() {
   return (

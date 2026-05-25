@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+
+export const metadata: Metadata = {
+  title: "Политика обработки данных",
+  description: "Политика обработки персональных данных VogueWay — как мы собираем, храним и используем ваши данные.",
+};
 
 export default function PrivacyPage() {
   return (

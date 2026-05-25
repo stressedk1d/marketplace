@@ -29,7 +29,7 @@ export async function CelebritiesSection() {
           Знаменитости пока недоступны.
         </p>
       ) : (
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+        <div className={`grid gap-4 ${celebrities.length <= 2 ? "grid-cols-1 sm:grid-cols-2 max-w-2xl" : "grid-cols-2 md:grid-cols-3 lg:grid-cols-4"}`}>
           {celebrities.map((c) => (
             <Link
               key={c.id}

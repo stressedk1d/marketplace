@@ -131,7 +131,7 @@ export default function WishlistPage() {
         <Breadcrumbs items={[{ label: "Избранное" }]} />
         <h1 className="h32 mb-2">Избранное</h1>
         <p className="text16 text-gray-600 mb-6 inline-flex items-center gap-2">
-          <Image src="/favorites-icon.png" alt="" width={16} height={16} />
+          <Image src="/favorites-icon.png" alt="Избранное" width={16} height={16} />
           <span>Товары, которые вы отметили на карточках в каталоге.</span>
         </p>
 
@@ -174,7 +174,7 @@ export default function WishlistPage() {
                       aria-label="Удалить из избранного"
                       className="w-8 h-8 rounded-full bg-white/90 border border-black/15 flex items-center justify-center hover:bg-white"
                     >
-                      <Image src="/delete-icon.png" alt="" width={14} height={14} />
+                      <Image src="/delete-icon.png" alt="Удалить" width={14} height={14} />
                     </button>
                   </div>
                 </div>

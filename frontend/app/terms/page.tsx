@@ -1,4 +1,10 @@
+import type { Metadata } from "next";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+
+export const metadata: Metadata = {
+  title: "Пользовательское соглашение",
+  description: "Пользовательское соглашение VogueWay — условия использования маркетплейса.",
+};
 
 export default function TermsPage() {
   return (

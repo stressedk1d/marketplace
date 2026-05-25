@@ -1,5 +1,11 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+
+export const metadata: Metadata = {
+  title: "О компании",
+  description: "VogueWay — маркетплейс модной одежды, обуви и аксессуаров. Узнайте о нашей миссии и ценностях.",
+};
 
 const values = [
   {

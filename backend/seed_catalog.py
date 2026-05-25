@@ -395,19 +395,19 @@ BILLIE_LINE: list[tuple[str, str, float]] = [
 
 BILLIE_IMAGE_SETS: dict[str, list[str]] = {
     "Billie Eilish — демо Oversized Tee": [
-        "/images/celebrities/billie eilish/Billie Eilish Tee.webp",
+        "/images/celebrities/billie-eilish/Billie Eilish Tee.webp",
     ],
     "Billie Neon Logo Beanie": [
-        "/images/celebrities/billie eilish/Billie Neon Logo Beanie.webp",
+        "/images/celebrities/billie-eilish/Billie Neon Logo Beanie.webp",
     ],
     "Billie Tour Tote — демо": [
-        "/images/celebrities/billie eilish/Billie Tour Tote.webp",
-        "/images/celebrities/billie eilish/Billie Tour Tote1.webp",
-        "/images/celebrities/billie eilish/Billie Tour Tote2.webp",
-        "/images/celebrities/billie eilish/Billie Tour Tote3.webp",
+        "/images/celebrities/billie-eilish/Billie Tour Tote.webp",
+        "/images/celebrities/billie-eilish/Billie Tour Tote1.webp",
+        "/images/celebrities/billie-eilish/Billie Tour Tote2.webp",
+        "/images/celebrities/billie-eilish/Billie Tour Tote3.webp",
     ],
     "Billie Sustainable Cap — демо": [
-        "/images/celebrities/billie eilish/Billie Sustainable Cap.webp",
+        "/images/celebrities/billie-eilish/Billie Sustainable Cap.webp",
     ],
 }
 
@@ -476,7 +476,7 @@ def _sync_brands_and_collections(db: Session) -> dict[str, models.Collection]:
         ("Recrent", "recrent", "/images/celebrities/recrent/recrent.jpg", True),
         ("New Balance", "new-balance", "/images/brands/new_balance/New_Balance_logo.svg", False),
         ("Converse", "converse", "/images/brands/converse/Converse_logo.svg", False),
-        ("Billie Eilish", "billie-eilish", "/images/celebrities/billie eilish/Billie-Eilish-Logo.png", True),
+        ("Billie Eilish", "billie-eilish", "/images/celebrities/billie-eilish/Billie-Eilish-Logo.png", True),
     ]
     by_brand_slug: dict[str, models.Brand] = {}
     for name, slug, logo, is_c in brand_specs:

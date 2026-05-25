@@ -16,7 +16,7 @@ export function HomeHero() {
       {!useFallback ? (
         <Image
           src={HERO_REMOTE}
-          alt=""
+          alt="VogueWay — маркетплейс модной одежды"
           fill
           priority
           unoptimized
@@ -36,7 +36,7 @@ export function HomeHero() {
           VogueWay
         </p>
         <h1 className="animate-home-in-delay max-w-4xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-          Discover Your Style
+          Открой свой стиль
         </h1>
         <p className="animate-home-in-delay mx-auto mt-6 max-w-xl text-lg text-white/85 sm:text-xl">
           Бренды, коллекции и лимитированные дропы — в одном маркетплейсе.

@@ -236,10 +236,10 @@ const EXTRA_IMAGES_BY_PRIMARY: Record<string, string[]> = {
     "/images/brands/nike/Nike Charge Backpack4.webp",
     "/images/brands/nike/Nike Charge Backpack5.webp",
   ],
-  "/images/celebrities/billie eilish/Billie Tour Tote.webp": [
-    "/images/celebrities/billie eilish/Billie Tour Tote1.webp",
-    "/images/celebrities/billie eilish/Billie Tour Tote2.webp",
-    "/images/celebrities/billie eilish/Billie Tour Tote3.webp",
+  "/images/celebrities/billie-eilish/Billie Tour Tote.webp": [
+    "/images/celebrities/billie-eilish/Billie Tour Tote1.webp",
+    "/images/celebrities/billie-eilish/Billie Tour Tote2.webp",
+    "/images/celebrities/billie-eilish/Billie Tour Tote3.webp",
   ],
 };
 
@@ -563,7 +563,7 @@ export default function ProductPage() {
                 onClick={() => void shareProduct()}
                 className="w-full mt-3 py-2 text16 border border-black bg-white hover:bg-gray-100 inline-flex items-center justify-center gap-2"
               >
-                <Image src="/share-icon.png" alt="" width={16} height={16} />
+                <Image src="/share-icon.png" alt="Поделиться" width={16} height={16} />
                 <span>Поделиться</span>
               </button>
               <p className="text20 mt-6">Доставка в г.Москва</p>

@@ -222,7 +222,7 @@ export default function CartPage() {
                             className="text16 text-gray-400 hover:text-black"
                             aria-label="В избранное"
                           >
-                            <Image src="/add-to-favorites.png" alt="" width={16} height={16} />
+                            <Image src="/add-to-favorites.png" alt="В избранное" width={16} height={16} />
                           </button>
                           <button
                             onClick={() => {
@@ -232,14 +232,14 @@ export default function CartPage() {
                             className="text16 text-gray-400 hover:text-black"
                             aria-label="Поделиться"
                           >
-                            <Image src="/share-icon.png" alt="" width={16} height={16} />
+                            <Image src="/share-icon.png" alt="Поделиться" width={16} height={16} />
                           </button>
                           <button
                             onClick={() => removeItem(item.id)}
                             className="text16 text-gray-400 hover:text-black"
                             aria-label="Удалить"
                           >
-                            <Image src="/delete-icon.png" alt="" width={16} height={16} />
+                            <Image src="/delete-icon.png" alt="Удалить" width={16} height={16} />
                           </button>
                         </div>
                       </div>

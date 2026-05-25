@@ -78,7 +78,7 @@ export default function Header() {
         className="min-h-11 shrink-0 px-4 bg-black text-white text16 inline-flex items-center justify-center"
         aria-label="Искать"
       >
-        <Image src="/search-icon.png" alt="" width={16} height={16} />
+        <Image src="/search-icon.png" alt="Поиск" width={16} height={16} />
       </button>
     </form>
   );
@@ -116,7 +116,7 @@ export default function Header() {
             className="relative inline-flex min-h-11 min-w-11 items-center justify-center border border-black bg-white"
             aria-label="Избранное"
           >
-            <Image src="/favorites-icon.png" alt="" width={18} height={18} />
+            <Image src="/favorites-icon.png" alt="Избранное" width={18} height={18} />
           </Link>
 
           <Link
@@ -124,7 +124,7 @@ export default function Header() {
             className="relative inline-flex min-h-11 min-w-11 items-center justify-center border border-black bg-white"
             aria-label="Корзина"
           >
-            <Image src="/cart-icon.png" alt="" width={18} height={18} />
+            <Image src="/cart-icon.png" alt="Корзина" width={18} height={18} />
             {count > 0 && (
               <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-black text-[10px] text-white">
                 {count > 99 ? "99+" : count}
@@ -169,11 +169,11 @@ export default function Header() {
               </Link>
             )}
             <Link href="/wishlist" className="text16 inline-flex items-center gap-2">
-              <Image src="/favorites-icon.png" alt="" width={16} height={16} />
+              <Image src="/favorites-icon.png" alt="Избранное" width={16} height={16} />
               <span className="hidden lg:inline">Избранное</span>
             </Link>
             <Link href="/cart" className="text16 relative inline-flex items-center gap-2">
-              <Image src="/cart-icon.png" alt="" width={16} height={16} />
+              <Image src="/cart-icon.png" alt="Корзина" width={16} height={16} />
               <span className="hidden lg:inline">Корзина</span>
               {count > 0 && (
                 <span className="absolute -right-4 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-black text-xs text-white">
