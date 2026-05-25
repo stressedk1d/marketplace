@@ -3,6 +3,8 @@ import Link from "next/link";
 import { fetchBrands } from "@/lib/catalog-fetch";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
 
+export const dynamic = "force-dynamic";
+
 export default async function BrandsPage() {
   const brands = await fetchBrands();
 
