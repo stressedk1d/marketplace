@@ -596,6 +596,17 @@ def _sync_product_images(
         print(f"[DB] Updated image_url for {updated} products.")
 
 
+def _clear_product_refs(db: Session, product_ids: list[int]) -> None:
+    """Remove cart/wishlist/review/order refs for given product IDs, ignoring missing tables."""
+    from sqlalchemy.exc import ProgrammingError
+    for model_cls in (models.CartItem, models.WishlistItem, models.Review, models.OrderItem):
+        try:
+            db.query(model_cls).filter(model_cls.product_id.in_(product_ids)).delete(synchronize_session=False)
+            db.flush()
+        except ProgrammingError:
+            db.rollback()
+
+
 def _prune_brand_products_without_images(
     db: Session,
     brand_slug: str,
@@ -609,11 +620,7 @@ def _prune_brand_products_without_images(
     to_delete = [p for p in products if p.name not in product_names_with_images]
     if not to_delete:
         return
-    ids = [p.id for p in to_delete]
-    db.query(models.CartItem).filter(models.CartItem.product_id.in_(ids)).delete(synchronize_session=False)
-    db.query(models.WishlistItem).filter(models.WishlistItem.product_id.in_(ids)).delete(synchronize_session=False)
-    db.query(models.Review).filter(models.Review.product_id.in_(ids)).delete(synchronize_session=False)
-    db.query(models.OrderItem).filter(models.OrderItem.product_id.in_(ids)).delete(synchronize_session=False)
+    _clear_product_refs(db, [p.id for p in to_delete])
     for product in to_delete:
         db.delete(product)
     db.commit()
@@ -663,11 +670,7 @@ def _remove_collection_by_slug(db: Session, collection_slug: str) -> None:
         return
     products = db.query(models.Product).filter(models.Product.collection_id == collection.id).all()
     if products:
-        ids = [p.id for p in products]
-        db.query(models.CartItem).filter(models.CartItem.product_id.in_(ids)).delete(synchronize_session=False)
-        db.query(models.WishlistItem).filter(models.WishlistItem.product_id.in_(ids)).delete(synchronize_session=False)
-        db.query(models.Review).filter(models.Review.product_id.in_(ids)).delete(synchronize_session=False)
-        db.query(models.OrderItem).filter(models.OrderItem.product_id.in_(ids)).delete(synchronize_session=False)
+        _clear_product_refs(db, [p.id for p in products])
         for product in products:
             db.delete(product)
     db.delete(collection)
@@ -685,11 +688,7 @@ def _remove_brand_by_slug(db: Session, brand_slug: str) -> None:
 
     products = db.query(models.Product).filter(models.Product.brand_id == brand.id).all()
     if products:
-        ids = [p.id for p in products]
-        db.query(models.CartItem).filter(models.CartItem.product_id.in_(ids)).delete(synchronize_session=False)
-        db.query(models.WishlistItem).filter(models.WishlistItem.product_id.in_(ids)).delete(synchronize_session=False)
-        db.query(models.Review).filter(models.Review.product_id.in_(ids)).delete(synchronize_session=False)
-        db.query(models.OrderItem).filter(models.OrderItem.product_id.in_(ids)).delete(synchronize_session=False)
+        _clear_product_refs(db, [p.id for p in products])
         for product in products:
             db.delete(product)
 
