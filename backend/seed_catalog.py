@@ -609,6 +609,11 @@ def _prune_brand_products_without_images(
     to_delete = [p for p in products if p.name not in product_names_with_images]
     if not to_delete:
         return
+    ids = [p.id for p in to_delete]
+    db.query(models.CartItem).filter(models.CartItem.product_id.in_(ids)).delete(synchronize_session=False)
+    db.query(models.WishlistItem).filter(models.WishlistItem.product_id.in_(ids)).delete(synchronize_session=False)
+    db.query(models.Review).filter(models.Review.product_id.in_(ids)).delete(synchronize_session=False)
+    db.query(models.OrderItem).filter(models.OrderItem.product_id.in_(ids)).delete(synchronize_session=False)
     for product in to_delete:
         db.delete(product)
     db.commit()
@@ -657,8 +662,14 @@ def _remove_collection_by_slug(db: Session, collection_slug: str) -> None:
     if not collection:
         return
     products = db.query(models.Product).filter(models.Product.collection_id == collection.id).all()
-    for product in products:
-        db.delete(product)
+    if products:
+        ids = [p.id for p in products]
+        db.query(models.CartItem).filter(models.CartItem.product_id.in_(ids)).delete(synchronize_session=False)
+        db.query(models.WishlistItem).filter(models.WishlistItem.product_id.in_(ids)).delete(synchronize_session=False)
+        db.query(models.Review).filter(models.Review.product_id.in_(ids)).delete(synchronize_session=False)
+        db.query(models.OrderItem).filter(models.OrderItem.product_id.in_(ids)).delete(synchronize_session=False)
+        for product in products:
+            db.delete(product)
     db.delete(collection)
     db.commit()
     print(
@@ -673,8 +684,14 @@ def _remove_brand_by_slug(db: Session, brand_slug: str) -> None:
         return
 
     products = db.query(models.Product).filter(models.Product.brand_id == brand.id).all()
-    for product in products:
-        db.delete(product)
+    if products:
+        ids = [p.id for p in products]
+        db.query(models.CartItem).filter(models.CartItem.product_id.in_(ids)).delete(synchronize_session=False)
+        db.query(models.WishlistItem).filter(models.WishlistItem.product_id.in_(ids)).delete(synchronize_session=False)
+        db.query(models.Review).filter(models.Review.product_id.in_(ids)).delete(synchronize_session=False)
+        db.query(models.OrderItem).filter(models.OrderItem.product_id.in_(ids)).delete(synchronize_session=False)
+        for product in products:
+            db.delete(product)
 
     collections = db.query(models.Collection).filter(models.Collection.brand_id == brand.id).all()
     for collection in collections:
