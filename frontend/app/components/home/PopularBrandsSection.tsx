@@ -40,7 +40,7 @@ export async function PopularBrandsSection() {
                 {b.logo_url ? (
                   <Image
                     src={b.logo_url}
-                    alt=""
+                    alt={`Логотип ${b.name}`}
                     fill
                     unoptimized
                     className="object-contain p-2"

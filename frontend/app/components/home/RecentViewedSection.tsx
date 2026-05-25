@@ -77,7 +77,7 @@ export function RecentViewedSection() {
           Вы недавно смотрели
         </h2>
         <p className="mt-2 max-w-lg text-neutral-600">
-          Сохранено в этом браузере — до 10 последних уникальных товаров.
+          Товары, которые вы недавно просматривали.
         </p>
       </div>
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
@@ -92,7 +92,7 @@ export function RecentViewedSection() {
               <div className="relative h-52 w-full bg-neutral-200">
                 <Image
                   src={src}
-                  alt=""
+                  alt={p.name}
                   fill
                   unoptimized
                   className="object-cover transition duration-500 group-hover:scale-[1.03]"

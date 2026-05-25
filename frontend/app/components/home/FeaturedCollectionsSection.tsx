@@ -36,7 +36,7 @@ export async function FeaturedCollectionsSection() {
               className="group relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-gradient-to-br from-white to-neutral-100 p-8 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md"
             >
               <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 transition group-hover:text-neutral-700">
-                {c.brand?.name ?? "Collection"}
+                {c.brand?.name ?? "Коллекция"}
               </p>
               <h3 className="mt-2 text-2xl font-semibold text-neutral-900">
                 {c.name}

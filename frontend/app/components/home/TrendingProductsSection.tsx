@@ -15,7 +15,7 @@ export async function TrendingProductsSection() {
             Сейчас в тренде
           </h2>
           <p className="mt-2 max-w-lg text-neutral-600">
-            По числу просмотров карточки товара — данные с сервера (кэш ~1 мин).
+            Самые просматриваемые товары на площадке прямо сейчас.
           </p>
         </div>
         <Link
@@ -43,7 +43,7 @@ export async function TrendingProductsSection() {
                 <div className="relative h-52 w-full bg-neutral-200">
                   <Image
                     src={src}
-                    alt=""
+                    alt={p.name}
                     fill
                     unoptimized
                     className="object-cover transition duration-500 group-hover:scale-[1.03]"

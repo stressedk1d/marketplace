@@ -12,17 +12,33 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "VogueWay",
-  description: "Маркетплейс одежды",
+  title: {
+    default: "VogueWay — маркетплейс модной одежды и обуви",
+    template: "%s | VogueWay",
+  },
+  description:
+    "Маркетплейс модной одежды, обуви и аксессуаров. Nike, Adidas, New Balance, Converse и коллекции знаменитостей. Доставка по России.",
+  keywords: [
+    "маркетплейс",
+    "одежда",
+    "обувь",
+    "аксессуары",
+    "мода",
+    "Nike",
+    "Adidas",
+    "VogueWay",
+  ],
+  openGraph: {
+    title: "VogueWay — маркетплейс модной одежды и обуви",
+    description:
+      "Одежда, обувь и аксессуары от ведущих брендов. Коллекции знаменитостей, визуальный поиск по фото.",
+    siteName: "VogueWay",
+    type: "website",
+    locale: "ru_RU",
+  },
   icons: {
     icon: "/favicon.png",
   },
-};
-
-export const viewport = {
-  width: "device-width",
-  initialScale: 1,
-  maximumScale: 5,
 };
 
 export default function RootLayout({
