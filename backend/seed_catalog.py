@@ -600,11 +600,12 @@ def _clear_product_refs(db: Session, product_ids: list[int]) -> None:
     """Remove cart/wishlist/review/order refs for given product IDs, ignoring missing tables."""
     from sqlalchemy.exc import ProgrammingError
     for model_cls in (models.CartItem, models.WishlistItem, models.Review, models.OrderItem):
+        sp = db.begin_nested()
         try:
             db.query(model_cls).filter(model_cls.product_id.in_(product_ids)).delete(synchronize_session=False)
-            db.flush()
+            sp.commit()
         except ProgrammingError:
-            db.rollback()
+            sp.rollback()
 
 
 def _prune_brand_products_without_images(
