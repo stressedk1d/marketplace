@@ -1,18 +1,18 @@
-/** Браузер — публичный URL; SSR в Docker — внутренний backend:8000 */
-export function getApiBaseUrl(): string {
-  const internal = process.env.API_INTERNAL_URL?.trim();
-  if (typeof window === "undefined" && internal) {
-    return internal.replace(/\/$/, "");
+/**
+ * SSR в Docker — прямое обращение к backend:8000.
+ * Браузер — через /api prefix, Next.js rewrites проксирует на backend.
+ */
+export function apiUrl(path: string): string {
+  if (typeof window === "undefined") {
+    const internal = process.env.API_INTERNAL_URL?.trim();
+    if (internal) return `${internal.replace(/\/$/, "")}${path}`;
   }
-  return (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(
-    /\/$/,
-    ""
-  );
+  return `/api${path}`;
 }
 
-export const API_BASE_URL = getApiBaseUrl();
-
-export const apiUrl = (path: string) => `${getApiBaseUrl()}${path}`;
+export const API_BASE_URL = typeof window === "undefined"
+  ? (process.env.API_INTERNAL_URL?.trim()?.replace(/\/$/, "") ?? "http://localhost:8000")
+  : "/api";
 
 /**
  * fetch с автоматическим редиректом на /login при 401.

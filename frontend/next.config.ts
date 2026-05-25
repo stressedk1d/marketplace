@@ -44,6 +44,15 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
+  async rewrites() {
+    const backendUrl = process.env.API_INTERNAL_URL ?? "http://backend:8000";
+    return [
+      {
+        source: "/api/:path*",
+        destination: `${backendUrl}/:path*`,
+      },
+    ];
+  },
 };
 
 export default nextConfig;
