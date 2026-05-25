@@ -642,7 +642,7 @@ def _dedupe_brand_products(
     for product in products:
         by_name.setdefault(product.name, []).append(product)
 
-    removed = 0
+    to_remove: list[models.Product] = []
     for name, items in by_name.items():
         if len(items) < 2:
             continue
@@ -651,14 +651,15 @@ def _dedupe_brand_products(
         keep = next((p for p in items if p.image_url == preferred_image), items[0])
 
         for product in items:
-            if product.id == keep.id:
-                continue
-            db.delete(product)
-            removed += 1
+            if product.id != keep.id:
+                to_remove.append(product)
 
-    if removed:
+    if to_remove:
+        _clear_product_refs(db, [p.id for p in to_remove])
+        for product in to_remove:
+            db.delete(product)
         db.commit()
-        print(f"[DB] Removed {removed} duplicate products for {brand_slug}.")
+        print(f"[DB] Removed {len(to_remove)} duplicate products for {brand_slug}.")
 
 
 def _remove_collection_by_slug(db: Session, collection_slug: str) -> None:
