@@ -44,3 +44,23 @@ def login_user(email: str, password: str, db: Session) -> str:
         db.commit()
 
     return utils.create_access_token(data={"sub": user.email})
+
+
+def get_profile(user: models.User) -> dict:
+    return {"email": user.email, "full_name": user.full_name}
+
+
+def update_profile(
+    user: models.User,
+    full_name: str | None,
+    current_password: str | None,
+    new_password: str | None,
+    db: Session,
+) -> None:
+    if full_name is not None:
+        user.full_name = full_name
+    if new_password:
+        if not current_password or not utils.verify_password(current_password, user.password_hash):
+            raise HTTPException(status_code=400, detail="Текущий пароль неверен")
+        user.password_hash = utils.get_password_hash(new_password)
+    db.commit()

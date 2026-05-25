@@ -11,6 +11,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
 import WishlistHeart from "@/app/components/WishlistHeart";
 import { useCart } from "@/lib/CartContext";
@@ -233,13 +234,10 @@ function CollectionContent() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => router.push("/catalog")}
-          className="text16 text-gray-600 hover:text-black mb-4"
-        >
-          ← Каталог
-        </button>
+        <Breadcrumbs items={[
+          { label: "Каталог", href: "/catalog" },
+          { label: meta?.name ?? slug },
+        ]} />
 
         {meta && (
           <header className="mb-10">

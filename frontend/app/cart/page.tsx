@@ -5,8 +5,10 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
 import { useCart } from "@/lib/CartContext";
+import { useWishlist } from "@/lib/useWishlist";
 
 interface CartItem {
   id: number;
@@ -35,10 +37,12 @@ interface ProductListResponse {
 export default function CartPage() {
   const router = useRouter();
   const { refreshCart } = useCart();
+  const { toggle: toggleWishlist } = useWishlist();
   const [items, setItems] = useState<CartItem[]>([]);
+  const [payMethod, setPayMethod] = useState<"pickup" | "online">("pickup");
   const [suggested, setSuggested] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [checkoutLoading, setCheckoutLoading] = useState(false);
+
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
 
@@ -86,26 +90,26 @@ export default function CartPage() {
     }
   };
 
-  const handleCheckout = async () => {
+  const updateQuantity = async (id: number, newQty: number) => {
     const token = localStorage.getItem("token");
-    if (!token) { router.push("/login"); return; }
-    setCheckoutLoading(true);
+    if (newQty <= 0) {
+      await removeItem(id);
+      return;
+    }
     try {
-      const res = await apiFetch(apiUrl("/orders/checkout"), {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}` },
+      const res = await apiFetch(apiUrl(`/cart/${id}`), {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token ?? ""}` },
+        body: JSON.stringify({ quantity: newQty }),
       });
-      const data = await res.json();
-      if (!res.ok) { notify(data.detail || "Не удалось оформить заказ", "error"); return; }
-      notify(`Заказ #${data.order_id} успешно оформлен`, "success");
-      setItems([]);
-      refreshCart();
-      setTimeout(() => router.push("/orders"), 1200);
+      if (res.ok) {
+        setItems(items.map((i) => (i.id === id ? { ...i, quantity: newQty } : i)));
+        refreshCart();
+      } else {
+        notify("Не удалось обновить количество", "error");
+      }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") router.push("/login?reason=session_expired");
-      else notify("Ошибка соединения с сервером", "error");
-    } finally {
-      setCheckoutLoading(false);
     }
   };
 
@@ -131,6 +135,7 @@ export default function CartPage() {
   return (
     <div className="min-h-screen py-8">
       <div className="container-main text-black">
+        <Breadcrumbs items={[{ label: "Корзина" }]} />
         {message && <div className="mb-4"><Toast message={message} type={messageType} /></div>}
 
         {items.length === 0 ? (
@@ -190,9 +195,6 @@ export default function CartPage() {
                 {items.map((item, idx) => (
                   <div key={item.id} className={`p-4 ${idx < items.length - 1 ? "border-b border-black/10" : ""}`}>
                     <div className="flex gap-4">
-                      <div className="flex items-start pt-1">
-                        <input type="checkbox" defaultChecked className="w-4 h-4 accent-black" />
-                      </div>
                       <div className="relative w-20 h-20 bg-[#d9d9d9] shrink-0">
                         <Image src={item.image_url} alt={item.name} fill unoptimized className="object-cover" />
                       </div>
@@ -205,15 +207,31 @@ export default function CartPage() {
                           <p className="text16 text-black shrink-0">{item.price} ₽</p>
                         </div>
                         <div className="flex items-center gap-2 mt-3">
-                          <button className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">−</button>
+                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">−</button>
                           <span className="text16 w-6 text-center">{item.quantity}</span>
-                          <button className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">+</button>
+                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">+</button>
                         </div>
                         <div className="flex items-center gap-4 mt-3">
-                          <button className="text16 text-gray-400 hover:text-black" aria-label="В избранное">
+                          <button
+                            onClick={() => {
+                              const token = localStorage.getItem("token");
+                              if (!token) { router.push("/login"); return; }
+                              void toggleWishlist(item.product_id);
+                              notify("Добавлено в избранное", "success");
+                            }}
+                            className="text16 text-gray-400 hover:text-black"
+                            aria-label="В избранное"
+                          >
                             <Image src="/add-to-favorites.png" alt="" width={16} height={16} />
                           </button>
-                          <button className="text16 text-gray-400 hover:text-black" aria-label="Поделиться">
+                          <button
+                            onClick={() => {
+                              const url = `${window.location.origin}/product/${item.product_id}`;
+                              navigator.clipboard?.writeText(url).then(() => notify("Ссылка скопирована", "success")).catch(() => {});
+                            }}
+                            className="text16 text-gray-400 hover:text-black"
+                            aria-label="Поделиться"
+                          >
                             <Image src="/share-icon.png" alt="" width={16} height={16} />
                           </button>
                           <button
@@ -246,17 +264,13 @@ export default function CartPage() {
 
                 <p className="text16 font-semibold mb-2">Оплата картой</p>
                 <div className="flex mb-4">
-                  <button className="flex-1 py-1.5 text16 bg-black text-white">При получении</button>
-                  <button className="flex-1 py-1.5 text16 border border-black bg-white hover:bg-gray-50">Сразу</button>
+                  <button onClick={() => setPayMethod("pickup")} className={`flex-1 py-1.5 text16 ${payMethod === "pickup" ? "bg-black text-white" : "border border-black bg-white hover:bg-gray-50"}`}>При получении</button>
+                  <button onClick={() => setPayMethod("online")} className={`flex-1 py-1.5 text16 ${payMethod === "online" ? "bg-black text-white" : "border border-black bg-white hover:bg-gray-50"}`}>Сразу</button>
                 </div>
 
                 <div className="flex justify-between text16 mb-1 text-black">
                   <span>Товары, {totalCount} шт.</span>
                   <span>{totalPrice} ₽</span>
-                </div>
-                <div className="flex justify-between text16 text-gray-400 mb-4">
-                  <span>Моя скидка</span>
-                  <span>Расчёт скидки</span>
                 </div>
                 <div className="flex justify-between text20 font-semibold mb-5 text-black">
                   <span>Итого</span>
@@ -264,11 +278,10 @@ export default function CartPage() {
                 </div>
 
                 <button
-                  onClick={handleCheckout}
-                  disabled={checkoutLoading}
-                  className={`w-full py-3 text20 border border-black ${checkoutLoading ? "bg-gray-400 text-white" : "bg-black text-white hover:bg-gray-900"}`}
+                  onClick={() => router.push("/checkout")}
+                  className="w-full py-3 text20 border border-black bg-black text-white hover:bg-gray-900"
                 >
-                  {checkoutLoading ? "Оформляем..." : "Заказать"}
+                  Оформить заказ
                 </button>
                 <p className="text-center text16 text-gray-400 mt-3">
                   Соглашаюсь с правилами пользования торговой площадкой и возврата

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { apiUrl } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 
 interface Brand {
   id: number;
@@ -33,6 +34,7 @@ export default function BrandsPage() {
   return (
     <div className="min-h-screen py-10 text-black">
       <div className="container-main">
+        <Breadcrumbs items={[{ label: "Бренды" }]} />
         <h1 className="h32 mb-2">Бренды</h1>
         <p className="text16 text-gray-600 mb-10 max-w-2xl">
           Выберите бренд, чтобы открыть его коллекции и товары.

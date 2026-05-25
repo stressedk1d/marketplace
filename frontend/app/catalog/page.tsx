@@ -3,6 +3,7 @@
 import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
 import { useCart } from "@/lib/CartContext";
 import { apiFetch, apiUrl } from "@/lib/api";
@@ -303,6 +304,7 @@ function CatalogContent() {
   return (
     <div className="min-h-screen bg-[#f7f7f7] py-6 sm:py-8">
       <div className="container-main">
+        <Breadcrumbs items={[{ label: "Каталог" }]} />
         {toastMessage && (
           <div className="mb-4">
             <Toast message={toastMessage} type={toastType} />

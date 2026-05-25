@@ -42,3 +42,17 @@ def remove_from_cart(user_id: int, item_id: int, db: Session) -> None:
         raise HTTPException(status_code=404, detail="Позиция не найдена")
     db.delete(item)
     db.commit()
+
+
+def update_quantity(user_id: int, item_id: int, quantity: int, db: Session) -> None:
+    item = db.query(models.CartItem).filter(
+        models.CartItem.id == item_id,
+        models.CartItem.user_id == user_id,
+    ).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Позиция не найдена")
+    if quantity <= 0:
+        db.delete(item)
+    else:
+        item.quantity = quantity
+    db.commit()

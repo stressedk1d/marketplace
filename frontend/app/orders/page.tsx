@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
 
 type OrderStatus = "created" | "paid" | "shipped" | "delivered" | "cancelled";
@@ -63,31 +64,6 @@ function StatusProgress({ status }: { status: OrderStatus }) {
   );
 }
 
-function demoActions(status: OrderStatus): { label: string; next: OrderStatus }[] {
-  switch (status) {
-    case "created":
-      return [
-        { label: "Оплачен (демо)", next: "paid" },
-        { label: "Отменить", next: "cancelled" },
-      ];
-    case "paid":
-      return [
-        { label: "Отправлен (демо)", next: "shipped" },
-        { label: "Отменить", next: "cancelled" },
-      ];
-    case "shipped":
-      return [{ label: "Доставлен (демо)", next: "delivered" }];
-    default:
-      return [];
-  }
-}
-
-function actionIcon(next: OrderStatus): string {
-  if (next === "cancelled") return "/delete-icon.png";
-  if (next === "paid") return "/purchases-icon.png";
-  return "/notifications-icon.png";
-}
-
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
@@ -96,7 +72,6 @@ export default function OrdersPage() {
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [authMissing, setAuthMissing] = useState(false);
-  const [updatingId, setUpdatingId] = useState<number | null>(null);
 
   const fetchOrders = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -130,48 +105,6 @@ export default function OrdersPage() {
     void fetchOrders();
   }, [fetchOrders]);
 
-  const patchOrderStatus = async (orderId: number, next: OrderStatus) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
-    setUpdatingId(orderId);
-    setToast("");
-    try {
-      const res = await apiFetch(apiUrl(`/orders/${orderId}/status`), {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ status: next }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const detail =
-          typeof data?.detail === "string"
-            ? data.detail
-            : "Не удалось обновить статус";
-        setToast(detail);
-        setToastType("error");
-        return;
-      }
-      const updated = data as Order;
-      setOrders((prev) =>
-        prev.map((o) => (o.id === orderId ? { ...o, status: updated.status } : o))
-      );
-      setToast("Статус обновлён");
-      setToastType("success");
-    } catch (err: unknown) {
-      if (err instanceof Error && err.message === "SESSION_EXPIRED") {
-        router.push("/login?reason=session_expired");
-      } else {
-        setToast("Ошибка сети");
-        setToastType("error");
-      }
-    } finally {
-      setUpdatingId(null);
-    }
-  };
-
   if (loading) {
     return (
       <div className="text-center mt-10 text20">Загрузка заказов...</div>
@@ -197,11 +130,8 @@ export default function OrdersPage() {
   return (
     <div className="min-h-screen py-8">
       <div className="container-main text-black">
-        <h1 className="h32 mb-2">Мои заказы</h1>
-        <p className="text16 text-gray-600 mb-6 max-w-2xl">
-          Демо: владелец заказа может вручную переводить статусы (имитация оплаты и
-          доставки). В продакшене это делали бы платёж, админка и служба доставки.
-        </p>
+        <Breadcrumbs items={[{ label: "Мои заказы" }]} />
+        <h1 className="h32 mb-6">Мои заказы</h1>
 
         {error && (
           <div className="mb-4">
@@ -250,29 +180,6 @@ export default function OrdersPage() {
                   </div>
 
                   <StatusProgress status={order.status} />
-
-                  {demoActions(order.status).length > 0 && (
-                    <div className="flex flex-wrap gap-2 pt-2">
-                      {demoActions(order.status).map(({ label, next }) => (
-                        <button
-                          key={label}
-                          type="button"
-                          disabled={updatingId === order.id}
-                          onClick={() => void patchOrderStatus(order.id, next)}
-                          className={`text16 border px-4 py-2 transition inline-flex items-center gap-2 ${
-                            updatingId === order.id
-                              ? "border-gray-300 text-gray-400"
-                              : "border-black bg-white hover:bg-gray-50"
-                          }`}
-                        >
-                          {updatingId !== order.id && (
-                            <Image src={actionIcon(next)} alt="" width={14} height={14} />
-                          )}
-                          {updatingId === order.id ? "…" : label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
                 </div>
                 <div className="p-5 space-y-4">
                   {order.items.map((item) => (

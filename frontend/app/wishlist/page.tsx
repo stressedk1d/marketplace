@@ -5,7 +5,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
+import { useCart } from "@/lib/CartContext";
 import WishlistHeart from "@/app/components/WishlistHeart";
 import { useWishlist } from "@/lib/useWishlist";
 
@@ -21,6 +23,7 @@ interface Product {
 export default function WishlistPage() {
   const router = useRouter();
   const { refresh: refreshWishlistIds } = useWishlist();
+  const { refreshCart } = useCart();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [authMissing, setAuthMissing] = useState(false);
@@ -87,6 +90,21 @@ export default function WishlistPage() {
     }
   };
 
+  const addToCart = async (productId: number) => {
+    const token = localStorage.getItem("token");
+    if (!token) { router.push("/login"); return; }
+    try {
+      await apiFetch(apiUrl("/cart/add"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ product_id: productId, quantity: 1 }),
+      });
+      refreshCart();
+      setToast("Товар добавлен в корзину");
+      setToastType("success");
+    } catch {}
+  };
+
   if (loading) {
     return (
       <div className="text-center mt-10 text20">Загрузка избранного...</div>
@@ -110,6 +128,7 @@ export default function WishlistPage() {
   return (
     <div className="min-h-screen py-8">
       <div className="container-main text-black">
+        <Breadcrumbs items={[{ label: "Избранное" }]} />
         <h1 className="h32 mb-2">Избранное</h1>
         <p className="text16 text-gray-600 mb-6 inline-flex items-center gap-2">
           <Image src="/favorites-icon.png" alt="" width={16} height={16} />
@@ -171,6 +190,12 @@ export default function WishlistPage() {
                       {product.description}
                     </p>
                   )}
+                  <button
+                    onClick={() => void addToCart(product.id)}
+                    className="w-full border border-black py-1.5 text16 bg-white hover:bg-gray-100 mt-auto"
+                  >
+                    В корзину
+                  </button>
                 </div>
               </article>
             ))}

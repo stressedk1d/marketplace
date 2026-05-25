@@ -45,6 +45,17 @@ class MessageResponse(BaseModel):
     message: str
 
 
+class ProfileUpdateRequest(BaseModel):
+    full_name: str | None = None
+    current_password: str | None = None
+    new_password: str | None = None
+
+
+class ProfileResponse(BaseModel):
+    email: str
+    full_name: str | None = None
+
+
 # ── Catalog ───────────────────────────────────────────────────────────────────
 
 class BrandBrief(BaseModel):
@@ -151,6 +162,10 @@ class AddToCart(BaseModel):
     quantity: int = 1
 
 
+class UpdateCartQuantity(BaseModel):
+    quantity: int
+
+
 class CartItemResponse(BaseModel):
     id: int
     product_id: int
@@ -188,6 +203,23 @@ class CheckoutResponse(BaseModel):
 
 class OrderStatusUpdate(BaseModel):
     status: OrderStatus
+
+
+# ── Reviews ──────────────────────────────────────────────────────────────────
+
+class ReviewCreate(BaseModel):
+    rating: int = Field(ge=1, le=5)
+    text: str | None = None
+
+
+class ReviewResponse(BaseModel):
+    id: int
+    user_id: int
+    user_name: str | None = None
+    product_id: int
+    rating: int
+    text: str | None = None
+    created_at: str | None = None
 
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
@@ -229,3 +261,24 @@ class MaintenanceStatusResponse(BaseModel):
 class MaintenanceUpdateRequest(BaseModel):
     enabled: bool
     message: Optional[str] = None
+
+
+# ── Admin product management ─────────────────────────────────────────────────
+
+class AdminProductCreate(BaseModel):
+    name: str
+    description: str | None = None
+    price: float
+    image_url: str | None = None
+    brand_id: int | None = None
+    collection_id: int | None = None
+    product_type: str = "clothing"
+
+class AdminProductUpdate(BaseModel):
+    name: str | None = None
+    description: str | None = None
+    price: float | None = None
+    image_url: str | None = None
+    brand_id: int | None = None
+    collection_id: int | None = None
+    product_type: str | None = None

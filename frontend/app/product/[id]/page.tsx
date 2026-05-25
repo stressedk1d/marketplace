@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
 import WishlistHeart from "@/app/components/WishlistHeart";
 import { useCart } from "@/lib/CartContext";
@@ -39,6 +40,16 @@ interface ProductListResponse {
   total: number;
   limit: number;
   offset: number;
+}
+
+interface Review {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  product_id: number;
+  rating: number;
+  text: string | null;
+  created_at: string | null;
 }
 
 // Дополнительные изображения галереи по главному image_url товара.
@@ -237,6 +248,11 @@ function getProductImages(imageUrl: string): string[] {
   return [imageUrl, ...extras];
 }
 
+const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
+const SHOE_SIZES = ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"];
+
+type TabKey = "about" | "brand" | "reviews";
+
 export default function ProductPage() {
   const params = useParams<{ id: string }>();
   const [product, setProduct] = useState<Product | null>(null);
@@ -246,6 +262,13 @@ export default function ProductPage() {
   const [cartMessage, setCartMessage] = useState("");
   const [cartMessageType, setCartMessageType] = useState<"success" | "error">("success");
   const [lightbox, setLightbox] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<TabKey>("about");
+  const [selectedSize, setSelectedSize] = useState<string | null>(null);
+  const [sizePickerOpen, setSizePickerOpen] = useState(false);
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewText, setReviewText] = useState("");
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const { refreshCart } = useCart();
   const { ids: wishlistIds, toggle: toggleWishlist } = useWishlist();
 
@@ -289,6 +312,50 @@ export default function ProductPage() {
       image_url: product.image_url ?? null,
     });
   }, [product]);
+
+  useEffect(() => {
+    if (!product) return;
+    fetch(apiUrl(`/products/${product.id}/reviews`))
+      .then(r => r.json())
+      .then(data => setReviews(data))
+      .catch(() => {});
+  }, [product]);
+
+  const submitReview = async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      setCartMessage("Войдите, чтобы оставить отзыв");
+      setCartMessageType("error");
+      return;
+    }
+    setReviewSubmitting(true);
+    try {
+      const res = await apiFetch(apiUrl(`/products/${product!.id}/reviews`), {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ rating: reviewRating, text: reviewText || null }),
+      });
+      if (res.ok) {
+        const newReview = await res.json();
+        setReviews([newReview, ...reviews]);
+        setReviewText("");
+        setReviewRating(5);
+        setCartMessage("Отзыв добавлен");
+        setCartMessageType("success");
+      } else {
+        const data = await res.json();
+        setCartMessage(data.detail || "Не удалось добавить отзыв");
+        setCartMessageType("error");
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.message === "SESSION_EXPIRED") {
+        setCartMessage("Сессия истекла");
+        setCartMessageType("error");
+      }
+    } finally {
+      setReviewSubmitting(false);
+    }
+  };
 
   const addToCart = async (id: number) => {
     const token = localStorage.getItem("token");
@@ -362,6 +429,11 @@ export default function ProductPage() {
             </div>
           )}
 
+          <Breadcrumbs items={[
+            { label: "Каталог", href: "/catalog" },
+            { label: product.name },
+          ]} />
+
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
             <section className="lg:col-span-2">
               {(() => {
@@ -432,9 +504,52 @@ export default function ProductPage() {
                 </p>
               )}
               <p className="h32 mb-6 text-black">{product.price} ₽</p>
-              <button type="button" className="w-full text16 border border-black py-2 bg-white mb-3">
-                Выбрать размер
+              <button
+                type="button"
+                onClick={() => setSizePickerOpen(!sizePickerOpen)}
+                className="w-full text16 border border-black py-2 bg-white mb-1 flex items-center justify-between px-3"
+              >
+                <span>{selectedSize ? `Размер: ${selectedSize}` : "Выбрать размер"}</span>
+                <svg width="12" height="12" viewBox="0 0 12 12" className={`transition-transform ${sizePickerOpen ? "rotate-180" : ""}`}>
+                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+                </svg>
               </button>
+              {sizePickerOpen && (
+                <div className="border border-black/15 bg-white p-3 mb-3">
+                  <div className="flex flex-wrap gap-2">
+                    {(product.name.toLowerCase().includes("кроссовки") ||
+                      product.name.toLowerCase().includes("shoes") ||
+                      product.name.toLowerCase().includes("sneaker") ||
+                      product.name.toLowerCase().includes("слайды") ||
+                      product.name.toLowerCase().includes("gazelle") ||
+                      product.name.toLowerCase().includes("forum") ||
+                      product.name.toLowerCase().includes("racer") ||
+                      product.name.toLowerCase().includes("pegasus") ||
+                      product.name.toLowerCase().includes("chuck") ||
+                      product.name.toLowerCase().includes("run star") ||
+                      product.name.toLowerCase().includes("one star") ||
+                      product.name.toLowerCase().includes("574") ||
+                      product.name.toLowerCase().includes("fuelcell") ||
+                      product.name.toLowerCase().includes("adilette")
+                      ? SHOE_SIZES : SIZES
+                    ).map((size) => (
+                      <button
+                        key={size}
+                        type="button"
+                        onClick={() => { setSelectedSize(size); setSizePickerOpen(false); }}
+                        className={`px-3 py-1.5 text16 border transition ${
+                          selectedSize === size
+                            ? "border-black bg-black text-white"
+                            : "border-black/30 bg-white hover:bg-gray-100"
+                        }`}
+                      >
+                        {size}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {!sizePickerOpen && <div className="mb-3" />}
               <button
                 type="button"
                 onClick={() => addToCart(product.id)}
@@ -456,12 +571,128 @@ export default function ProductPage() {
           </div>
 
           <section className="mb-10">
-            <div className="flex gap-8 mb-4">
-              <h2 className="h32">О товаре</h2>
-              <h2 className="h32">О бренде</h2>
-              <h2 className="h32">Отзывы</h2>
+            <div className="flex gap-0 border-b border-black/15 mb-6">
+              {([
+                { key: "about" as TabKey, label: "О товаре" },
+                { key: "brand" as TabKey, label: "О бренде" },
+                { key: "reviews" as TabKey, label: "Отзывы" },
+              ]).map((tab) => (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setActiveTab(tab.key)}
+                  className={`px-6 py-3 text20 font-semibold transition-colors relative ${
+                    activeTab === tab.key
+                      ? "text-black"
+                      : "text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  {tab.label}
+                  {activeTab === tab.key && (
+                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
+                  )}
+                </button>
+              ))}
             </div>
-            <p className="text20 max-w-4xl mb-4">{product.description || "Описание товара будет добавлено продавцом."}</p>
+
+            {activeTab === "about" && (
+              <div className="max-w-4xl space-y-4">
+                <p className="text20">{product.description || "Описание товара будет добавлено продавцом."}</p>
+                {product.collection && (
+                  <p className="text16 text-gray-600">
+                    Коллекция:{" "}
+                    <Link href={`/collections/${product.collection.slug}`} className="underline">
+                      {product.collection.name}
+                    </Link>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {activeTab === "brand" && (
+              <div className="max-w-4xl space-y-4">
+                {product.brand ? (
+                  <>
+                    <h3 className="text20 font-semibold">{product.brand.name}</h3>
+                    <p className="text16 text-gray-600">
+                      {product.brand.is_celebrity
+                        ? `${product.brand.name} — знаменитость с эксклюзивными коллекциями и мерчем на VogueWay.`
+                        : `${product.brand.name} — один из ведущих брендов, представленных на VogueWay.`}
+                    </p>
+                    <Link
+                      href={product.brand.is_celebrity ? `/celebrities/${product.brand.slug}` : `/brands/${product.brand.slug}`}
+                      className="inline-block text16 underline"
+                    >
+                      Все товары {product.brand.name} →
+                    </Link>
+                  </>
+                ) : (
+                  <p className="text16 text-gray-400">Информация о бренде недоступна.</p>
+                )}
+              </div>
+            )}
+
+            {activeTab === "reviews" && (
+              <div className="max-w-4xl space-y-6">
+                {/* Review form */}
+                <div className="border border-black/15 bg-white p-5">
+                  <h3 className="text20 font-semibold mb-3">Оставить отзыв</h3>
+                  <div className="flex items-center gap-1 mb-3">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        onClick={() => setReviewRating(star)}
+                        className={`text-2xl ${star <= reviewRating ? "text-yellow-500" : "text-gray-300"}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                    <span className="text16 text-gray-500 ml-2">{reviewRating}/5</span>
+                  </div>
+                  <textarea
+                    value={reviewText}
+                    onChange={(e) => setReviewText(e.target.value)}
+                    placeholder="Напишите ваш отзыв (необязательно)"
+                    rows={3}
+                    className="w-full border border-black/20 p-3 text16 bg-[#fafafa] resize-y mb-3"
+                  />
+                  <button
+                    type="button"
+                    onClick={submitReview}
+                    disabled={reviewSubmitting}
+                    className={`px-6 py-2 text16 border border-black ${reviewSubmitting ? "bg-gray-300" : "bg-black text-white hover:bg-gray-900"}`}
+                  >
+                    {reviewSubmitting ? "Отправка..." : "Отправить отзыв"}
+                  </button>
+                </div>
+
+                {/* Reviews list */}
+                {reviews.length === 0 ? (
+                  <div className="border border-dashed border-black/15 bg-white/60 rounded-xl px-6 py-10 text-center">
+                    <p className="text20 text-gray-400 mb-2">Отзывов пока нет</p>
+                    <p className="text16 text-gray-400">Будьте первым, кто оставит отзыв на этот товар.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {reviews.map((review) => (
+                      <div key={review.id} className="border border-black/15 bg-white p-4">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <span className="text16 font-semibold">{review.user_name || "Пользователь"}</span>
+                            <span className="text-yellow-500">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                          </div>
+                          <span className="text14 text-gray-400">
+                            {review.created_at ? new Date(review.created_at).toLocaleDateString("ru-RU") : ""}
+                          </span>
+                        </div>
+                        {review.text && <p className="text16 text-gray-700">{review.text}</p>}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </section>
 
           {similar.length > 0 && (

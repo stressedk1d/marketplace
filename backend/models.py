@@ -198,6 +198,23 @@ class OrderItem(Base):
     product = relationship("Product", back_populates="order_items")
 
 
+class Review(Base):
+    __tablename__ = "reviews"
+    __table_args__ = (
+        UniqueConstraint("user_id", "product_id", name="uq_review_user_product"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    product_id = Column(Integer, ForeignKey("products.id"), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)
+    text = Column(String, nullable=True)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
+
+    user = relationship("User")
+    product = relationship("Product")
+
+
 class SiteConfig(Base):
     """Глобальные настройки сайта (одна строка, id=1)."""
 

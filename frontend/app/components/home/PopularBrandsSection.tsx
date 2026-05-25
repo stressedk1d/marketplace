@@ -10,7 +10,7 @@ export async function PopularBrandsSection() {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl">
-            Popular brands
+            Популярные бренды
           </h2>
           <p className="mt-2 max-w-lg text-neutral-600">
             Nike, Adidas и другие — переходите к коллекциям одним кликом.

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiUrl } from "@/lib/api";
 import type { CatalogBrand } from "@/lib/catalog-types";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 
 export default function CelebritiesListPage() {
   const [brands, setBrands] = useState<CatalogBrand[]>([]);
@@ -31,6 +32,7 @@ export default function CelebritiesListPage() {
   return (
     <div className="min-h-screen py-8">
       <div className="container-main text-black">
+        <Breadcrumbs items={[{ label: "Знаменитости" }]} />
         <h1 className="h32 mb-8">Знаменитости</h1>
         {loading ? (
           <p className="text16 text-gray-500">Загрузка…</p>

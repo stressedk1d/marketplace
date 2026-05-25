@@ -53,7 +53,10 @@ export default function RegisterPage() {
     <div className="min-h-screen py-10">
       <div className="container-main">
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 border border-black/30">
-          <div className="min-h-[460px] bg-[#d9d9d9]" />
+          <div className="min-h-[460px] bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-700 flex flex-col items-center justify-center p-8 text-white">
+            <h2 className="text-3xl font-bold tracking-tight mb-3">VogueWay</h2>
+            <p className="text-neutral-300 text-center max-w-xs">Создайте аккаунт и откройте мир моды с VogueWay.</p>
+          </div>
           <form
             onSubmit={handleRegister}
             className="p-8 bg-[#f3f3f3] flex flex-col gap-4 text-black"

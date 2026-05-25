@@ -74,7 +74,7 @@ export function RecentViewedSection() {
     <section className="animate-home-soft space-y-8">
       <div>
         <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl">
-          Recently viewed
+          Вы недавно смотрели
         </h2>
         <p className="mt-2 max-w-lg text-neutral-600">
           Сохранено в этом браузере — до 10 последних уникальных товаров.

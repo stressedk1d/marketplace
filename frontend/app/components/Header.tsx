@@ -133,20 +133,11 @@ export default function Header() {
           </Link>
         </div>
 
-        <p className="mt-2 text12 inline-flex items-center gap-1.5 text-gray-600">
-          <Image src="/location-icon.png" alt="" width={14} height={14} className="opacity-70" />
-          г. Москва
-        </p>
-
         <div className="mt-3">{searchForm("flex w-full gap-0")}</div>
       </div>
 
       <div className="container-main hidden py-5 md:block">
-        <div className="mb-4 flex items-center justify-between gap-4">
-          <p className="text16 inline-flex items-center gap-2">
-            <Image src="/location-icon.png" alt="" width={16} height={16} className="opacity-70" />
-            <span>г. Москва</span>
-          </p>
+        <div className="mb-4 flex items-center gap-4">
           <Link href="/" className="inline-flex h-12 items-center justify-center">
             <Image
               src="/logo.png"
@@ -157,7 +148,7 @@ export default function Header() {
               className="max-h-12 w-auto object-contain"
             />
           </Link>
-          <div className="flex flex-wrap items-center justify-end gap-3 lg:gap-5">
+          <div className="flex flex-wrap items-center justify-end gap-3 lg:gap-5 ml-auto">
             {isLoggedIn ? (
               <>
                 {isAdmin && (

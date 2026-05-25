@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db
 from deps import get_current_user
-from schemas import AddToCart, CartItemResponse, MessageResponse
+from schemas import AddToCart, CartItemResponse, MessageResponse, UpdateCartQuantity
 from services import cart_service
 
 router = APIRouter(tags=["cart"])
@@ -26,6 +26,17 @@ def get_cart(
     current_user: models.User = Depends(get_current_user),
 ) -> list[CartItemResponse]:
     return cart_service.get_cart(current_user.id, db)
+
+
+@router.patch("/cart/{item_id}", response_model=MessageResponse)
+def update_cart_item(
+    item_id: int,
+    body: UpdateCartQuantity,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(get_current_user),
+) -> MessageResponse:
+    cart_service.update_quantity(current_user.id, item_id, body.quantity, db)
+    return MessageResponse(message="Обновлено")
 
 
 @router.delete("/cart/{item_id}", response_model=MessageResponse)

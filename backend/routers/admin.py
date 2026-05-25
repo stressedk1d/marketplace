@@ -7,12 +7,16 @@ from models import User
 from schemas import (
     AdminMeResponse,
     AdminOrderResponse,
+    AdminProductCreate,
+    AdminProductUpdate,
     AdminStatsResponse,
     AdminUserResponse,
     MaintenanceStatusResponse,
     MaintenanceUpdateRequest,
+    MessageResponse,
     OrderResponse,
     OrderStatusUpdate,
+    ProductResponse,
 )
 from services import admin_service, maintenance_service, orders_service
 
@@ -85,3 +89,32 @@ def set_maintenance(
         db, body.enabled, body.message
     )
     return MaintenanceStatusResponse(enabled=enabled, message=message)
+
+
+@router.post("/products", response_model=ProductResponse)
+def admin_create_product(
+    body: AdminProductCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> ProductResponse:
+    return admin_service.create_product(body, db)
+
+
+@router.patch("/products/{product_id}", response_model=ProductResponse)
+def admin_update_product(
+    product_id: int,
+    body: AdminProductUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> ProductResponse:
+    return admin_service.update_product(product_id, body, db)
+
+
+@router.delete("/products/{product_id}", response_model=MessageResponse)
+def admin_delete_product(
+    product_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> MessageResponse:
+    admin_service.delete_product(product_id, db)
+    return MessageResponse(message="Товар удалён")

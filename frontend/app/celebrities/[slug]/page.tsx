@@ -5,6 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 import Toast from "@/app/components/Toast";
 import { useCart } from "@/lib/CartContext";
 import type { CatalogBrand } from "@/lib/catalog-types";
@@ -123,6 +124,11 @@ export default function CelebrityDetailPage() {
             <Toast message={toast} type={toastType} />
           </div>
         )}
+
+        <Breadcrumbs items={[
+          { label: "Знаменитости", href: "/celebrities" },
+          { label: meta?.name ?? slug },
+        ]} />
 
         {meta && (
           <div className="mb-10 flex items-center gap-6 border border-black/10 bg-[#f3f3f3] p-6">

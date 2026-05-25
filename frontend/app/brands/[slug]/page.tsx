@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiUrl } from "@/lib/api";
+import Breadcrumbs from "@/app/components/Breadcrumbs";
 
 interface Collection {
   id: number;
@@ -78,13 +79,10 @@ export default function BrandCollectionsPage() {
   return (
     <div className="min-h-screen py-10 text-black">
       <div className="container-main">
-        <button
-          type="button"
-          onClick={() => router.push("/brands")}
-          className="text16 text-gray-600 hover:text-black mb-4"
-        >
-          ← Бренды
-        </button>
+        <Breadcrumbs items={[
+          { label: "Бренды", href: "/brands" },
+          { label: brandName || slug },
+        ]} />
         <h1 className="h32 mb-2">{brandName || slug}</h1>
         <p className="text16 text-gray-600 mb-10">Коллекции бренда</p>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

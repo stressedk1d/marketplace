@@ -42,6 +42,23 @@ interface AdminOrder {
   items: OrderItem[];
 }
 
+interface AdminProduct {
+  id: number;
+  name: string;
+  description: string | null;
+  price: number;
+  image_url: string | null;
+  brand_id: number | null;
+  collection_id: number | null;
+  product_type: string;
+}
+
+interface Brand {
+  id: number;
+  name: string;
+  slug: string;
+}
+
 const STATUS_LABELS: Record<OrderStatus, string> = {
   created: "Оформлен",
   paid: "Оплачен",
@@ -80,9 +97,16 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [tab, setTab] = useState<"orders" | "users">("orders");
+  const [tab, setTab] = useState<"orders" | "users" | "products">("orders");
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
+  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [brands, setBrands] = useState<Brand[]>([]);
+  const [showProductForm, setShowProductForm] = useState(false);
+  const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
+  const [productForm, setProductForm] = useState({
+    name: "", description: "", price: "", image_url: "", brand_id: "", product_type: "clothing"
+  });
   const [updatingId, setUpdatingId] = useState<number | null>(null);
   const [maintenanceEnabled, setMaintenanceEnabled] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState("");
@@ -114,11 +138,13 @@ export default function AdminPage() {
         return;
       }
 
-      const [statsRes, ordersRes, usersRes, maintenanceRes] = await Promise.all([
+      const [statsRes, ordersRes, usersRes, maintenanceRes, productsRes, brandsRes] = await Promise.all([
         apiFetch(apiUrl("/admin/stats"), { headers: authHeaders() }),
         apiFetch(apiUrl("/admin/orders?limit=100"), { headers: authHeaders() }),
         apiFetch(apiUrl("/admin/users?limit=100"), { headers: authHeaders() }),
         apiFetch(apiUrl("/admin/maintenance"), { headers: authHeaders() }),
+        apiFetch(apiUrl("/products?limit=200&offset=0"), { headers: authHeaders() }),
+        fetch(apiUrl("/brands")),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -128,6 +154,13 @@ export default function AdminPage() {
         const m = await maintenanceRes.json();
         setMaintenanceEnabled(Boolean(m.enabled));
         setMaintenanceMessage(m.message ?? "");
+      }
+      if (productsRes.ok) {
+        const data = await productsRes.json();
+        setProducts(data.items || []);
+      }
+      if (brandsRes.ok) {
+        setBrands(await brandsRes.json());
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
@@ -215,6 +248,67 @@ export default function AdminPage() {
     }
   };
 
+  const saveProduct = async () => {
+    const isEdit = !!editingProduct;
+    const url = isEdit ? apiUrl(`/admin/products/${editingProduct!.id}`) : apiUrl("/admin/products");
+    const method = isEdit ? "PATCH" : "POST";
+
+    try {
+      const res = await apiFetch(url, {
+        method,
+        headers: { ...authHeaders(), "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: productForm.name,
+          description: productForm.description || null,
+          price: parseFloat(productForm.price),
+          image_url: productForm.image_url || null,
+          brand_id: productForm.brand_id ? parseInt(productForm.brand_id) : null,
+          product_type: productForm.product_type,
+        }),
+      });
+      if (res.ok) {
+        setToast(isEdit ? "Товар обновлён" : "Товар создан");
+        setToastType("success");
+        setShowProductForm(false);
+        setEditingProduct(null);
+        setProductForm({ name: "", description: "", price: "", image_url: "", brand_id: "", product_type: "clothing" });
+        loadData();
+      } else {
+        const data = await res.json();
+        setToast(data.detail || "Ошибка"); setToastType("error");
+      }
+    } catch { setToast("Ошибка сети"); setToastType("error"); }
+  };
+
+  const deleteProduct = async (id: number) => {
+    if (!confirm("Удалить товар?")) return;
+    try {
+      const res = await apiFetch(apiUrl(`/admin/products/${id}`), {
+        method: "DELETE", headers: authHeaders(),
+      });
+      if (res.ok) {
+        setProducts(products.filter(p => p.id !== id));
+        setToast("Товар удалён"); setToastType("success");
+      } else {
+        const data = await res.json();
+        setToast(data.detail || "Ошибка"); setToastType("error");
+      }
+    } catch { setToast("Ошибка сети"); setToastType("error"); }
+  };
+
+  const startEditProduct = (p: AdminProduct) => {
+    setEditingProduct(p);
+    setProductForm({
+      name: p.name,
+      description: p.description || "",
+      price: String(p.price),
+      image_url: p.image_url || "",
+      brand_id: p.brand_id ? String(p.brand_id) : "",
+      product_type: p.product_type,
+    });
+    setShowProductForm(true);
+  };
+
   if (loading) {
     return <p className="text-center mt-10 text20">Загрузка панели администратора...</p>;
   }
@@ -242,7 +336,7 @@ export default function AdminPage() {
           <div>
             <h1 className="h32">Админ-панель VogueWay</h1>
             <p className="text16 text-gray-600 mt-1">
-              Управление заказами и пользователями
+              Управление заказами, товарами и пользователями
             </p>
           </div>
           <Link href="/catalog" className="text16 underline">
@@ -329,9 +423,16 @@ export default function AdminPage() {
           >
             Пользователи ({users.length})
           </button>
+          <button
+            type="button"
+            onClick={() => setTab("products")}
+            className={`px-4 py-2 text16 border ${tab === "products" ? "bg-black text-white border-black" : "bg-white border-black/30"}`}
+          >
+            Товары ({products.length})
+          </button>
         </div>
 
-        {tab === "orders" ? (
+        {tab === "orders" && (
           <div className="bg-white border border-black/20 overflow-x-auto">
             {orders.length === 0 ? (
               <p className="p-6 text16 text-gray-500">Заказов пока нет</p>
@@ -383,7 +484,9 @@ export default function AdminPage() {
               </table>
             )}
           </div>
-        ) : (
+        )}
+
+        {tab === "users" && (
           <div className="bg-white border border-black/20 overflow-x-auto">
             {users.length === 0 ? (
               <p className="p-6 text16 text-gray-500">Пользователей нет</p>
@@ -409,6 +512,103 @@ export default function AdminPage() {
                 </tbody>
               </table>
             )}
+          </div>
+        )}
+
+        {tab === "products" && (
+          <div className="space-y-4">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingProduct(null);
+                setProductForm({ name: "", description: "", price: "", image_url: "", brand_id: "", product_type: "clothing" });
+                setShowProductForm(true);
+              }}
+              className="px-5 py-2 text16 bg-black text-white border border-black hover:bg-gray-900"
+            >
+              + Добавить товар
+            </button>
+
+            {showProductForm && (
+              <div className="bg-white border border-black/20 p-5">
+                <h3 className="text20 font-semibold mb-4">{editingProduct ? "Редактировать товар" : "Новый товар"}</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text16 mb-1">Название *</label>
+                    <input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full border border-black/30 p-2 text16" required />
+                  </div>
+                  <div>
+                    <label className="block text16 mb-1">Цена *</label>
+                    <input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full border border-black/30 p-2 text16" required />
+                  </div>
+                  <div>
+                    <label className="block text16 mb-1">URL изображения</label>
+                    <input value={productForm.image_url} onChange={e => setProductForm({...productForm, image_url: e.target.value})} className="w-full border border-black/30 p-2 text16" />
+                  </div>
+                  <div>
+                    <label className="block text16 mb-1">Бренд</label>
+                    <select value={productForm.brand_id} onChange={e => setProductForm({...productForm, brand_id: e.target.value})} className="w-full border border-black/30 p-2 text16">
+                      <option value="">Без бренда</option>
+                      {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text16 mb-1">Тип</label>
+                    <select value={productForm.product_type} onChange={e => setProductForm({...productForm, product_type: e.target.value})} className="w-full border border-black/30 p-2 text16">
+                      <option value="clothing">Одежда</option>
+                      <option value="shoes">Обувь</option>
+                      <option value="accessories">Аксессуары</option>
+                    </select>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="block text16 mb-1">Описание</label>
+                    <textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} rows={3} className="w-full border border-black/30 p-2 text16 resize-y" />
+                  </div>
+                </div>
+                <div className="flex gap-3 mt-4">
+                  <button type="button" onClick={saveProduct} className="px-5 py-2 text16 bg-black text-white border border-black hover:bg-gray-900">
+                    {editingProduct ? "Сохранить" : "Создать"}
+                  </button>
+                  <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="px-5 py-2 text16 border border-black bg-white hover:bg-gray-100">
+                    Отмена
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className="bg-white border border-black/20 overflow-x-auto">
+              {products.length === 0 ? (
+                <p className="p-6 text16 text-gray-500">Товаров нет</p>
+              ) : (
+                <table className="w-full text-left text16 min-w-[720px]">
+                  <thead className="border-b border-black/10 bg-[#f9f9f9]">
+                    <tr>
+                      <th className="p-3 font-medium">ID</th>
+                      <th className="p-3 font-medium">Название</th>
+                      <th className="p-3 font-medium">Цена</th>
+                      <th className="p-3 font-medium">Тип</th>
+                      <th className="p-3 font-medium">Действия</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {products.map(p => (
+                      <tr key={p.id} className="border-b border-black/5">
+                        <td className="p-3">{p.id}</td>
+                        <td className="p-3">{p.name}</td>
+                        <td className="p-3">{p.price} ₽</td>
+                        <td className="p-3">{p.product_type}</td>
+                        <td className="p-3">
+                          <div className="flex gap-2">
+                            <button type="button" onClick={() => startEditProduct(p)} className="text14 px-2 py-1 border border-black/30 hover:bg-black hover:text-white">Изменить</button>
+                            <button type="button" onClick={() => deleteProduct(p.id)} className="text14 px-2 py-1 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white">Удалить</button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
           </div>
         )}
       </div>
