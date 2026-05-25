@@ -800,3 +800,46 @@ def seed_catalog(db: Session) -> None:
         _remove_brand_by_slug(db, "kanye-west")
         _remove_brand_by_slug(db, "rihanna")
         _remove_brand_by_slug(db, "drake")
+
+    _classify_product_types(db)
+
+
+SHOES_KEYWORDS = {
+    "pegasus", "revolution", "slide", "samba", "gazelle", "superstar",
+    "forum", "stan smith", "racer", "ultraboost", "adilette", "rs-x",
+    "suede classic", "velocity nitro", "chuck 70", "chuck70", "one star",
+    "run star", "574", "fuelcell", "fresh foam", "hovr phantom",
+}
+
+ACCESSORIES_KEYWORDS = {
+    "backpack", "рюкзак", "duffel", "сумка", "tote", "waistpack",
+    "cap", "кепка", "hat", "beanie", "шапка", "socks", "носки",
+    "цепочка", "нарукавник", "crew socks",
+}
+
+
+def _classify_product_types(db: Session) -> None:
+    products = db.query(models.Product).all()
+    updated = 0
+    for p in products:
+        name_lower = p.name.lower()
+        new_type = models.ProductType.clothing
+
+        for kw in SHOES_KEYWORDS:
+            if kw in name_lower:
+                new_type = models.ProductType.shoes
+                break
+
+        if new_type == models.ProductType.clothing:
+            for kw in ACCESSORIES_KEYWORDS:
+                if kw in name_lower:
+                    new_type = models.ProductType.accessories
+                    break
+
+        if p.product_type != new_type:
+            p.product_type = new_type
+            updated += 1
+
+    if updated:
+        db.commit()
+        print(f"[DB] Classified product_type for {updated} products.")
