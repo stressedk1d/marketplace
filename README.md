@@ -1,86 +1,114 @@
-# Catalog UI (Next.js + Design System + Visual Search)
+# VogueWay — маркетплейс модной одежды
 
-Frontend-каталог e-commerce проекта, ориентированный на production-качество: visual search, строгая дизайн-система и консистентный UI.
+Полнофункциональный маркетплейс с каталогом товаров, корзиной, системой заказов, отзывами, визуальным поиском по фото и админ-панелью.
 
-## Обзор
+**Стек:** PostgreSQL · FastAPI · Next.js · Nginx · Docker
 
-Проект реализует современный пользовательский сценарий маркетплейса:
-
-- Поиск товаров через фильтры, сортировку и пагинацию
-- Visual Search (поиск по фото)
-- Полностью адаптивный интерфейс (desktop + mobile)
-- UI, построенный на слое дизайн-системы
-
-Архитектурный принцип: компоненты не принимают локальные стилистические решения, а используют системные примитивы.
-
-## Design System
-
-Слой дизайн-системы расположен в `frontend/app/catalog/ui/`:
-
-- `tokens.ts` — дизайн-токены (радиусы, тени, transitions, правила цвета)
-- `classes.ts` — композиционные UI-примитивы (buttons, cards, inputs, chips, overlays и т.д.)
-- `rules.ts` — правила enforcement (запрещенные и разрешенные паттерны)
-
-Ключевой принцип:
-
-**UI полностью управляется системой. Никакого ad-hoc стилизования внутри компонентов.**
+**Демо:** [http://5.42.112.54](http://5.42.112.54) · **Домен:** [vogueway.ru](http://vogueway.ru)
 
 ## Возможности
 
-- Каталог товаров с фильтрацией
-- Сортировка и пагинация
-- Visual Search (поиск похожих товаров по изображению)
-- Responsive layout (desktop sidebar + mobile drawer/sheet)
-- Принудительная консистентность UI через design system layer
+### Покупатели
 
-## Архитектура
+- Каталог с фильтрами (бренд, тип, цена), сортировкой и пагинацией
+- Визуальный поиск — загрузите фото и найдите похожие товары (CLIP)
+- Карточка товара с галереей, выбором размера, вкладками (описание, бренд, отзывы)
+- Корзина с изменением количества, избранным и шерингом
+- Страница оформления заказа с адресом доставки
+- Избранное с возможностью добавить товар в корзину
+- История заказов с отслеживанием статусов
+- Отзывы с рейтингом (1–5 звёзд) на каждый товар
+- Личный кабинет — редактирование профиля, смена пароля
+- Бренды, коллекции, знаменитости — отдельные разделы
 
-- **URL-driven state** — состояние каталога синхронизировано с query params
-- **Backend-driven data** — бизнес-логика не дублируется во frontend
-- **Cached query layer** — детерминированные query keys и кеширование ответов
-- **Separation of concerns**
-  - API слой: запросы и транспорт данных
-  - UI слой: композиция интерфейса
-  - Design system слой: tokens, classes, rules
+### Администраторы
+
+- Статистика: пользователи, товары, заказы, выручка
+- Управление заказами — смена статусов (оформлен → оплачен → отправлен → доставлен)
+- CRUD товаров — создание, редактирование, удаление
+- Список пользователей
+- Режим технических работ
+
+### Инфраструктура
+
+- Docker Compose — один `docker compose up` поднимает всё
+- Nginx — reverse proxy на порту 80
+- PostgreSQL 16 — продакшен-БД
+- Alembic — автоматические миграции при старте
+- JWT-авторизация с bcrypt-хешированием паролей
+- SMTP-уведомления (Gmail)
 
 ## Технологический стек
 
-- Next.js (App Router)
-- React
-- TypeScript
-- Tailwind CSS
-
-## Ключевые принципы
-
-- Нет стилистических решений внутри компонентов
-- Composition-only UI
-- Tokens-first design system
-- Backend-driven состояние каталога
+| Слой | Технология |
+|------|-----------|
+| Frontend | Next.js 16, React 19, TypeScript, Tailwind CSS v4 |
+| Backend | FastAPI, SQLAlchemy, Alembic, Pydantic |
+| БД (dev) | SQLite |
+| БД (prod) | PostgreSQL 16 |
+| AI/Поиск | sentence-transformers, CLIP (PyTorch CPU) |
+| Контейнеры | Docker, Docker Compose |
+| Прокси | Nginx 1.27 |
 
 ## Структура проекта
 
-```text
-backend/                         # FastAPI backend
-frontend/
-  app/catalog/
-    components/                 # Каталог-компоненты (потребители системы)
-    ui/
-      tokens.ts                 # Дизайн-токены
-      classes.ts                # UI-примитивы
-      rules.ts                  # Правила enforcement
-  lib/                          # API/query слой интеграции
+```
+my_marketplace/
+├── backend/
+│   ├── routers/          # API-роутеры (auth, catalog, cart, orders, wishlist, admin, reviews, ai_search, site)
+│   ├── services/         # Бизнес-логика
+│   ├── alembic/          # Миграции БД
+│   ├── models.py         # SQLAlchemy-модели
+│   ├── schemas.py        # Pydantic-схемы
+│   ├── main.py           # Точка входа FastAPI
+│   ├── Dockerfile
+│   └── requirements.txt
+├── frontend/
+│   ├── app/
+│   │   ├── catalog/      # Каталог с дизайн-системой
+│   │   ├── product/[id]/ # Карточка товара
+│   │   ├── cart/          # Корзина
+│   │   ├── checkout/      # Оформление заказа
+│   │   ├── orders/        # История заказов
+│   │   ├── wishlist/      # Избранное
+│   │   ├── account/       # Личный кабинет
+│   │   ├── admin/         # Админ-панель
+│   │   ├── brands/        # Бренды
+│   │   ├── celebrities/   # Знаменитости
+│   │   ├── collections/   # Коллекции
+│   │   ├── about/         # О нас
+│   │   ├── contacts/      # Контакты
+│   │   ├── faq/           # Частые вопросы
+│   │   ├── privacy/       # Политика конфиденциальности
+│   │   ├── terms/         # Пользовательское соглашение
+│   │   ├── login/         # Вход
+│   │   ├── register/      # Регистрация
+│   │   ├── forgot-password/ # Восстановление пароля
+│   │   ├── components/    # Header, Footer, Breadcrumbs, Toast, и др.
+│   │   └── not-found.tsx  # Кастомная 404
+│   ├── lib/               # API-клиент, контексты, хуки
+│   ├── public/            # Статика (иконки, изображения)
+│   ├── Dockerfile
+│   └── package.json
+├── deploy/
+│   ├── nginx.conf         # Конфигурация Nginx
+│   └── DEPLOY.ru.md       # Инструкция по деплою
+├── docker-compose.yml     # Продакшен-стек
+├── .env.example           # Шаблон переменных окружения
+└── README.md
 ```
 
-## Локальный запуск
+## Быстрый старт (локально)
 
 ### Backend
 
 ```bash
 cd backend
-python -m venv venv312
-venv312\Scripts\activate
+python -m venv venv
+venv\Scripts\activate        # Windows
+# source venv/bin/activate   # Linux/Mac
 pip install -r requirements.txt
-copy .env.example .env
+copy .env.example .env       # заполнить переменные
 alembic upgrade head
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
@@ -93,9 +121,77 @@ npm install
 npm run dev
 ```
 
-При необходимости укажите `NEXT_PUBLIC_API_URL` в `frontend/.env.local`.
+Откройте http://localhost:3000. API доступен на http://localhost:8000/docs.
 
-## Примечания
+## Деплой на VPS (продакшен)
 
-- Visual Search использует backend endpoints и сохраняет текущий UX flow.
-- Отрисовка каталога, фильтры и визуальные состояния стандартизованы через `tokens.ts + classes.ts + rules.ts`.
+```bash
+# 1. Установить Docker
+curl -fsSL https://get.docker.com | sh
+
+# 2. Склонировать репозиторий
+git clone git@github.com:stressedk1d/marketplace.git
+cd marketplace
+
+# 3. Настроить переменные
+cp .env.example .env
+nano .env   # SECRET_KEY, POSTGRES_PASSWORD, PUBLIC_*_URL, CORS, SMTP, ADMIN_EMAILS
+
+# 4. Запустить
+docker compose up -d --build
+
+# 5. Проверить
+docker compose ps
+curl http://127.0.0.1:8000/site/status
+```
+
+Подробная инструкция: [deploy/DEPLOY.ru.md](deploy/DEPLOY.ru.md)
+
+## Переменные окружения
+
+| Переменная | Описание | Пример |
+|-----------|----------|--------|
+| `POSTGRES_PASSWORD` | Пароль БД | длинный пароль |
+| `SECRET_KEY` | Ключ JWT | `openssl rand -hex 32` |
+| `PUBLIC_SITE_URL` | URL сайта | `http://vogueway.ru` |
+| `PUBLIC_API_URL` | URL API | `http://vogueway.ru:8000` |
+| `CORS_ORIGINS` | Разрешённые домены | URL фронта |
+| `ADMIN_EMAILS` | Email администраторов | `admin@example.com` |
+| `INSTALL_AI` | Установить AI-зависимости | `1` или `0` |
+| `DISABLE_AI_SEARCH` | Отключить поиск по фото | `false` или `true` |
+| `SMTP_USER` | Gmail для уведомлений | `mail@gmail.com` |
+
+## API-эндпоинты
+
+| Метод | Путь | Описание |
+|-------|------|----------|
+| POST | `/auth/register` | Регистрация |
+| POST | `/auth/login` | Вход (JWT) |
+| GET/PATCH | `/auth/profile` | Профиль пользователя |
+| GET | `/products` | Каталог с фильтрами |
+| GET | `/products/{id}` | Карточка товара |
+| GET/POST | `/products/{id}/reviews` | Отзывы на товар |
+| POST | `/cart/add` | Добавить в корзину |
+| GET | `/cart` | Содержимое корзины |
+| PATCH/DELETE | `/cart/{id}` | Изменить/удалить позицию |
+| POST | `/orders/checkout` | Оформить заказ |
+| GET | `/orders/my` | Мои заказы |
+| POST/DELETE | `/wishlist/{id}` | Избранное |
+| GET | `/brands` | Список брендов |
+| GET | `/collections` | Коллекции |
+| POST | `/ai/search` | Поиск по фото |
+| GET/POST/PATCH/DELETE | `/admin/*` | Админ-панель |
+
+Swagger UI: `http://localhost:8000/docs`
+
+## Обновление
+
+```bash
+cd marketplace
+git pull
+docker compose up -d --build
+```
+
+## Автор
+
+Громов Игорь Владимирович — дипломный проект
