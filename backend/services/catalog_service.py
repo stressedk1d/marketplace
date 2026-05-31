@@ -14,6 +14,7 @@ from schemas import (
     ProductListResponse,
     ProductResponse,
     ProductSort,
+    ProductVariantResponse,
 )
 
 DEFAULT_CATALOG_LIMIT = 12
@@ -41,18 +42,46 @@ def _normalize_product_type(value: Optional[str]) -> Optional[str]:
 
 
 def _build_product_images(product: models.Product) -> list[str]:
-    image_urls = [img.url for img in (product.images or []) if img.url]
-    if image_urls:
-        return image_urls
+    """Канонический URL — products.image_url; product_images — доп. кадры."""
+    gallery = [img.url for img in (product.images or []) if img.url]
     if product.image_url:
-        return [product.image_url]
-    return []
+        result = [product.image_url]
+        for url in gallery:
+            if url != product.image_url and url not in result:
+                result.append(url)
+        return result
+    return gallery
 
 
-def product_to_response(product: models.Product) -> ProductResponse:
+def _fetch_review_stats(db: Session, product_ids: list[int]) -> dict[int, tuple[float, int]]:
+    if not product_ids:
+        return {}
+    rows = (
+        db.query(
+            models.Review.product_id,
+            func.avg(models.Review.rating),
+            func.count(models.Review.id),
+        )
+        .filter(models.Review.product_id.in_(product_ids))
+        .group_by(models.Review.product_id)
+        .all()
+    )
+    return {
+        int(pid): (round(float(avg), 1), int(cnt))
+        for pid, avg, cnt in rows
+        if avg is not None
+    }
+
+
+def product_to_response(
+    product: models.Product,
+    review_stats: Optional[dict[int, tuple[float, int]]] = None,
+) -> ProductResponse:
     image_urls = _build_product_images(product)
-
     image_url = image_urls[0] if image_urls else product.image_url
+    stats = (review_stats or {}).get(product.id)
+    avg_rating = stats[0] if stats else None
+    review_count = stats[1] if stats else 0
 
     return ProductResponse(
         id=product.id,
@@ -74,6 +103,12 @@ def product_to_response(product: models.Product) -> ProductResponse:
         collection=CollectionBrief.model_validate(product.collection)
         if product.collection
         else None,
+        avg_rating=avg_rating,
+        review_count=review_count,
+        variants=[
+            ProductVariantResponse(size=v.size, stock=int(v.stock or 0))
+            for v in (product.variants or [])
+        ],
     )
 
 
@@ -88,6 +123,7 @@ def _validate_pagination(limit: int, offset: int) -> None:
 
 
 def _apply_filters(
+    db: Session,
     query: Query,
     search: Optional[str],
     normalized_product_type: Optional[str],
@@ -96,6 +132,8 @@ def _apply_filters(
     collection_id: Optional[int],
     min_price: Optional[float],
     max_price: Optional[float],
+    in_stock_only: bool = False,
+    min_rating: Optional[float] = None,
 ) -> Query:
     if search:
         term = f"%{search.lower()}%"
@@ -114,6 +152,20 @@ def _apply_filters(
         query = query.filter(models.Product.price >= min_price)
     if max_price is not None:
         query = query.filter(models.Product.price <= max_price)
+    if in_stock_only:
+        stock_ids = (
+            db.query(models.ProductVariant.product_id)
+            .group_by(models.ProductVariant.product_id)
+            .having(func.coalesce(func.sum(models.ProductVariant.stock), 0) > 0)
+        )
+        query = query.filter(models.Product.id.in_(stock_ids))
+    if min_rating is not None:
+        rated_ids = (
+            db.query(models.Review.product_id)
+            .group_by(models.Review.product_id)
+            .having(func.avg(models.Review.rating) >= min_rating)
+        )
+        query = query.filter(models.Product.id.in_(rated_ids))
     return query
 
 
@@ -127,8 +179,11 @@ def _filtered_product_query(
     min_price: Optional[float],
     max_price: Optional[float],
     sort: ProductSort,
+    in_stock_only: bool = False,
+    min_rating: Optional[float] = None,
 ) -> Query:
     query = _apply_filters(
+        db,
         db.query(models.Product),
         search=search,
         normalized_product_type=normalized_product_type,
@@ -137,6 +192,8 @@ def _filtered_product_query(
         collection_id=collection_id,
         min_price=min_price,
         max_price=max_price,
+        in_stock_only=in_stock_only,
+        min_rating=min_rating,
     )
 
     if sort == ProductSort.price_asc:
@@ -175,6 +232,7 @@ def build_filters_query(
     effective_min_price = None if exclude_price else min_price
     effective_max_price = None if exclude_price else max_price
     return _apply_filters(
+        db,
         db.query(models.Product),
         search=search,
         normalized_product_type=effective_product_type,
@@ -211,8 +269,12 @@ def get_facets(
     brand_rows = (
         brands_base_query
         .join(models.Brand, models.Product.brand_id == models.Brand.id)
-        .with_entities(models.Brand.slug, func.count(models.Product.id))
-        .group_by(models.Brand.slug)
+        .with_entities(
+            models.Brand.slug,
+            models.Brand.name,
+            func.count(models.Product.id),
+        )
+        .group_by(models.Brand.slug, models.Brand.name)
         .order_by(func.count(models.Product.id).desc(), models.Brand.slug.asc())
         .all()
     )
@@ -264,10 +326,11 @@ def get_facets(
         "brands": [
             {
                 "slug": slug,
+                "name": name or slug,
                 "count": int(count),
                 "selected": bool(slug == selected_brand_slug),
             }
-            for slug, count in brand_rows
+            for slug, name, count in brand_rows
         ],
         "product_types": [
             {
@@ -310,6 +373,7 @@ def _product_load_options(query: Query) -> Query:
         joinedload(models.Product.brand),
         joinedload(models.Product.collection),
         selectinload(models.Product.images),
+        selectinload(models.Product.variants),
     )
 
 
@@ -429,6 +493,8 @@ def list_products(
     sort: ProductSort = ProductSort.name_asc,
     limit: int = DEFAULT_CATALOG_LIMIT,
     offset: int = 0,
+    in_stock_only: bool = False,
+    min_rating: Optional[float] = None,
 ) -> ProductListResponse:
     _validate_pagination(limit, offset)
     if min_price is not None and max_price is not None and min_price > max_price:
@@ -486,12 +552,13 @@ def list_products(
         min_price,
         max_price,
         sort,
+        in_stock_only=in_stock_only,
+        min_rating=min_rating,
     )
     total = base.count()
-    rows = (
-        _product_load_options(base).offset(offset).limit(limit).all()
-    )
-    items = [product_to_response(p) for p in rows]
+    rows = _product_load_options(base).offset(offset).limit(limit).all()
+    review_stats = _fetch_review_stats(db, [p.id for p in rows])
+    items = [product_to_response(p, review_stats) for p in rows]
     facets = get_facets(
         db,
         search,
@@ -557,4 +624,37 @@ def get_product(db: Session, product_id: int) -> ProductResponse:
     ).first()
     if not p:
         raise HTTPException(status_code=404, detail="Товар не найден")
-    return product_to_response(p)
+    return product_to_response(p, _fetch_review_stats(db, [product_id]))
+
+
+def get_similar_products(
+    db: Session, product_id: int, limit: int = 6
+) -> list[ProductResponse]:
+    if limit < 1 or limit > 24:
+        raise HTTPException(status_code=400, detail="limit должен быть от 1 до 24")
+
+    product = db.query(models.Product).filter(models.Product.id == product_id).first()
+    if not product:
+        raise HTTPException(status_code=404, detail="Товар не найден")
+
+    from sqlalchemy import or_
+
+    filters = [models.Product.product_type == product.product_type]
+    if product.brand_id:
+        filters.append(models.Product.brand_id == product.brand_id)
+    if product.collection_id:
+        filters.append(models.Product.collection_id == product.collection_id)
+
+    rows = (
+        _product_load_options(
+            db.query(models.Product)
+            .filter(models.Product.id != product_id)
+            .filter(or_(*filters))
+        )
+        .order_by(models.Product.views_count.desc(), models.Product.id.asc())
+        .limit(limit)
+        .all()
+    )
+
+    stats = _fetch_review_stats(db, [r.id for r in rows])
+    return [product_to_response(r, stats) for r in rows]

@@ -47,7 +47,11 @@ def login_user(email: str, password: str, db: Session) -> str:
 
 
 def get_profile(user: models.User) -> dict:
-    return {"email": user.email, "full_name": user.full_name}
+    return {
+        "email": user.email,
+        "full_name": user.full_name,
+        "loyalty_points": int(user.loyalty_points or 0),
+    }
 
 
 def update_profile(

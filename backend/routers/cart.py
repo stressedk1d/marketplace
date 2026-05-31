@@ -16,7 +16,13 @@ def add_to_cart(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ) -> MessageResponse:
-    cart_service.add_to_cart(current_user.id, item.product_id, item.quantity, db)
+    cart_service.add_to_cart(
+        current_user.id,
+        item.product_id,
+        item.quantity,
+        db,
+        size=item.size,
+    )
     return MessageResponse(message="Добавлено")
 
 

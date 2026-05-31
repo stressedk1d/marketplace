@@ -45,7 +45,11 @@ const nextConfig: NextConfig = {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
   async rewrites() {
-    const backendUrl = process.env.API_INTERNAL_URL ?? "http://backend:8000";
+    const backendUrl =
+      process.env.API_INTERNAL_URL?.trim() ||
+      (process.env.NODE_ENV === "production"
+        ? "http://backend:8000"
+        : "http://localhost:8000");
     return [
       {
         source: "/api/:path*",

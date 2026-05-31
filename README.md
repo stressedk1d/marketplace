@@ -12,18 +12,19 @@
 
 - Каталог с фильтрами (бренд, тип, цена), сортировкой и пагинацией
 - Визуальный поиск — загрузите фото и найдите похожие товары (CLIP)
+- Сравнение до 3 товаров, избранное, недавно просмотренные и рекомендации
 - Карточка товара с галереей, выбором размера, вкладками (описание, бренд, отзывы)
-- Корзина с изменением количества, избранным и шерингом
-- Страница оформления заказа с адресом доставки
-- Избранное с возможностью добавить товар в корзину
-- История заказов с отслеживанием статусов
+- Корзина с изменением количества и мини-drawer в шапке
+- Оформление заказа: адрес доставки, промокоды (WELCOME10, SAVE500), баллы лояльности
+- История заказов с отслеживанием статусов и адресом доставки
 - Отзывы с рейтингом (1–5 звёзд) на каждый товар
-- Личный кабинет — редактирование профиля, смена пароля
+- Личный кабинет — профиль, смена пароля, баллы лояльности
 - Бренды, коллекции, знаменитости — отдельные разделы
+- PWA (manifest), тёмная тема, адаптивная вёрстка
 
 ### Администраторы
 
-- Статистика: пользователи, товары, заказы, выручка
+- Статистика: пользователи, товары, заказы, выручка, графики за 7 дней
 - Управление заказами — смена статусов (оформлен → оплачен → отправлен → доставлен)
 - CRUD товаров — создание, редактирование, удаление
 - Список пользователей
@@ -71,6 +72,7 @@ my_marketplace/
 │   │   ├── checkout/      # Оформление заказа
 │   │   ├── orders/        # История заказов
 │   │   ├── wishlist/      # Избранное
+│   │   ├── compare/       # Сравнение товаров
 │   │   ├── account/       # Личный кабинет
 │   │   ├── admin/         # Админ-панель
 │   │   ├── brands/        # Бренды
@@ -83,7 +85,7 @@ my_marketplace/
 │   │   ├── terms/         # Пользовательское соглашение
 │   │   ├── login/         # Вход
 │   │   ├── register/      # Регистрация
-│   │   ├── forgot-password/ # Восстановление пароля
+│   │   ├── forgot-password/ # Запрос через поддержку (mailto)
 │   │   ├── components/    # Header, Footer, Breadcrumbs, Toast, и др.
 │   │   └── not-found.tsx  # Кастомная 404
 │   ├── lib/               # API-клиент, контексты, хуки
@@ -93,6 +95,9 @@ my_marketplace/
 ├── deploy/
 │   ├── nginx.conf         # Конфигурация Nginx
 │   └── DEPLOY.ru.md       # Инструкция по деплою
+├── docs/
+│   ├── demo-dod.md        # Чеклист готовности к демо
+│   └── demo-script.ru.md  # Сценарий защиты (5–7 мин)
 ├── docker-compose.yml     # Продакшен-стек
 ├── .env.example           # Шаблон переменных окружения
 └── README.md
@@ -140,7 +145,10 @@ nano .env   # SECRET_KEY, POSTGRES_PASSWORD, PUBLIC_*_URL, CORS, SMTP, ADMIN_EMA
 # 4. Запустить
 docker compose up -d --build
 
-# 5. Проверить
+# 5. Применить миграции (если не применились при старте)
+docker compose exec backend alembic upgrade head
+
+# 6. Проверить
 docker compose ps
 curl http://127.0.0.1:8000/site/status
 ```
@@ -154,6 +162,7 @@ curl http://127.0.0.1:8000/site/status
 | `POSTGRES_PASSWORD` | Пароль БД | длинный пароль |
 | `SECRET_KEY` | Ключ JWT | `openssl rand -hex 32` |
 | `PUBLIC_SITE_URL` | URL сайта | `http://vogueway.ru` |
+| `NEXT_PUBLIC_SITE_URL` | URL для OG-превью (сборка фронта) | как `PUBLIC_SITE_URL` |
 | `PUBLIC_API_URL` | URL API | `http://vogueway.ru:8000` |
 | `CORS_ORIGINS` | Разрешённые домены | URL фронта |
 | `ADMIN_EMAILS` | Email администраторов | `admin@example.com` |
@@ -174,15 +183,37 @@ curl http://127.0.0.1:8000/site/status
 | POST | `/cart/add` | Добавить в корзину |
 | GET | `/cart` | Содержимое корзины |
 | PATCH/DELETE | `/cart/{id}` | Изменить/удалить позицию |
-| POST | `/orders/checkout` | Оформить заказ |
+| POST | `/orders/checkout` | Оформить заказ (адрес, промокод) |
 | GET | `/orders/my` | Мои заказы |
+| POST | `/promo/validate` | Проверка промокода |
 | POST/DELETE | `/wishlist/{id}` | Избранное |
 | GET | `/brands` | Список брендов |
 | GET | `/collections` | Коллекции |
 | POST | `/ai/search` | Поиск по фото |
-| GET/POST/PATCH/DELETE | `/admin/*` | Админ-панель |
+| GET/POST/PATCH/DELETE | `/admin/*` | Админ-панель (в т.ч. `/admin/analytics`) |
 
 Swagger UI: `http://localhost:8000/docs`
+
+## Тестирование
+
+```bash
+# Backend (72+ тестов)
+cd backend && pytest
+
+# Frontend — production-сборка
+cd frontend && npm run build
+
+# E2E smoke (Playwright, опционально)
+cd frontend && npx playwright test
+```
+
+Демо-промокоды после seed: **WELCOME10** (−10%), **SAVE500** (−500 ₽ от 3000 ₽).
+
+## Документация
+
+- [Чеклист готовности к демо](docs/demo-dod.md)
+- [Сценарий защиты (5–7 мин)](docs/demo-script.ru.md)
+- [Деплой на VPS](deploy/DEPLOY.ru.md)
 
 ## Обновление
 
@@ -190,6 +221,7 @@ Swagger UI: `http://localhost:8000/docs`
 cd marketplace
 git pull
 docker compose up -d --build
+docker compose exec backend alembic upgrade head
 ```
 
 ## Автор

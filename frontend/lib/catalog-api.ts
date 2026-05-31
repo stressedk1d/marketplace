@@ -39,6 +39,8 @@ export function buildCatalogQuery(params: CatalogParams): string {
     sort: params.sort,
     limit: params.limit,
     offset: params.offset,
+    in_stock_only: params.in_stock_only ? true : undefined,
+    min_rating: params.min_rating || undefined,
   });
 }
 

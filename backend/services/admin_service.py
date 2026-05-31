@@ -2,15 +2,24 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session, joinedload
 
 import models
+from datetime import UTC, datetime, timedelta
 from fastapi import HTTPException
 
+from pathlib import Path
+from uuid import uuid4
+
 from schemas import (
+    AdminAnalyticsDay,
+    AdminAnalyticsResponse,
     AdminOrderResponse,
     AdminProductCreate,
     AdminProductUpdate,
     AdminStatsResponse,
+    AdminStatusCount,
     AdminUserResponse,
+    EmailLogResponse,
     ProductResponse,
+    ReviewResponse,
 )
 from services.orders_service import _order_to_response
 
@@ -30,6 +39,60 @@ def get_stats(db: Session) -> AdminStatsResponse:
         orders_count=int(orders_count),
         revenue_total=float(revenue or 0.0),
     )
+
+
+def get_analytics(db: Session, days: int = 7) -> AdminAnalyticsResponse:
+    days = max(1, min(days, 30))
+    today = datetime.now(UTC).date()
+    start_date = today - timedelta(days=days - 1)
+    start_dt = datetime.combine(start_date, datetime.min.time(), tzinfo=UTC)
+
+    day_rows = (
+        db.query(
+            func.date(models.Order.created_at).label("day"),
+            func.count(models.Order.id).label("orders_count"),
+            func.coalesce(func.sum(models.Order.total_amount), 0.0).label("revenue"),
+        )
+        .filter(models.Order.created_at >= start_dt)
+        .filter(models.Order.status != models.OrderStatus.cancelled)
+        .group_by(func.date(models.Order.created_at))
+        .all()
+    )
+    by_day = {
+        str(row.day): {
+            "orders_count": int(row.orders_count),
+            "revenue": float(row.revenue or 0.0),
+        }
+        for row in day_rows
+    }
+
+    analytics_days: list[AdminAnalyticsDay] = []
+    for offset in range(days):
+        d = start_date + timedelta(days=offset)
+        key = d.isoformat()
+        bucket = by_day.get(key, {"orders_count": 0, "revenue": 0.0})
+        analytics_days.append(
+            AdminAnalyticsDay(
+                date=key,
+                orders_count=bucket["orders_count"],
+                revenue=bucket["revenue"],
+            )
+        )
+
+    status_rows = (
+        db.query(models.Order.status, func.count(models.Order.id))
+        .group_by(models.Order.status)
+        .all()
+    )
+    orders_by_status = [
+        AdminStatusCount(
+            status=status.value if hasattr(status, "value") else str(status),
+            count=int(count),
+        )
+        for status, count in status_rows
+    ]
+
+    return AdminAnalyticsResponse(days=analytics_days, orders_by_status=orders_by_status)
 
 
 def list_orders(db: Session, limit: int = 50, offset: int = 0) -> list[AdminOrderResponse]:
@@ -151,3 +214,69 @@ def _product_to_response(product: models.Product) -> ProductResponse:
         brand=brand,
         collection=collection,
     )
+
+
+def list_reviews(db: Session, limit: int = 50, offset: int = 0) -> list[ReviewResponse]:
+    rows = (
+        db.query(models.Review)
+        .order_by(models.Review.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    result: list[ReviewResponse] = []
+    for r in rows:
+        user = db.query(models.User).filter(models.User.id == r.user_id).first()
+        result.append(
+            ReviewResponse(
+                id=r.id,
+                user_id=r.user_id,
+                user_name=user.full_name if user else None,
+                product_id=r.product_id,
+                rating=r.rating,
+                text=r.text,
+                created_at=r.created_at.isoformat() if r.created_at else None,
+            )
+        )
+    return result
+
+
+def delete_review(db: Session, review_id: int) -> None:
+    review = db.query(models.Review).filter(models.Review.id == review_id).first()
+    if not review:
+        raise HTTPException(status_code=404, detail="Отзыв не найден")
+    db.delete(review)
+    db.commit()
+
+
+def list_email_logs(db: Session, limit: int = 30) -> list[EmailLogResponse]:
+    rows = (
+        db.query(models.EmailLog)
+        .order_by(models.EmailLog.created_at.desc())
+        .limit(limit)
+        .all()
+    )
+    return [
+        EmailLogResponse(
+            id=r.id,
+            order_id=r.order_id,
+            to_email=r.to_email,
+            subject=r.subject,
+            body_preview=r.body_preview,
+            sent=r.sent,
+            created_at=r.created_at.isoformat() if r.created_at else None,
+        )
+        for r in rows
+    ]
+
+
+def save_uploaded_image(file_bytes: bytes, filename: str) -> str:
+    ext = Path(filename).suffix.lower() or ".jpg"
+    if ext not in {".jpg", ".jpeg", ".png", ".webp", ".gif"}:
+        raise HTTPException(status_code=400, detail="Допустимы jpg, png, webp, gif")
+    upload_dir = Path(__file__).resolve().parent.parent.parent / "frontend" / "public" / "uploads"
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    safe_name = f"{uuid4().hex}{ext}"
+    path = upload_dir / safe_name
+    path.write_bytes(file_bytes)
+    return f"/uploads/{safe_name}"

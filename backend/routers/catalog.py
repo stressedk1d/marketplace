@@ -120,6 +120,8 @@ def get_products(
     sort: ProductSort = ProductSort.name_asc,
     limit: int = Query(12, ge=1, le=50),
     offset: int = Query(0, ge=0),
+    in_stock_only: bool = Query(False, description="Только товары в наличии"),
+    min_rating: Optional[float] = Query(None, ge=1, le=5, description="Минимальный средний рейтинг"),
 ) -> ProductListResponse:
     return catalog_service.list_products(
         db,
@@ -134,9 +136,20 @@ def get_products(
         sort=sort,
         limit=limit,
         offset=offset,
+        in_stock_only=in_stock_only,
+        min_rating=min_rating,
     )
 
 
 @router.get("/products/{product_id}", response_model=ProductResponse)
 def get_product(product_id: int, db: Session = Depends(get_db)) -> ProductResponse:
     return catalog_service.get_product(db, product_id)
+
+
+@router.get("/products/{product_id}/similar", response_model=list[ProductResponse])
+def get_similar_products(
+    product_id: int,
+    limit: int = 6,
+    db: Session = Depends(get_db),
+) -> list[ProductResponse]:
+    return catalog_service.get_similar_products(db, product_id, limit=limit)

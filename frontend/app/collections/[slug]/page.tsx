@@ -12,10 +12,22 @@ import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
-import Toast from "@/app/components/Toast";
+import EmptyState from "@/app/components/EmptyState";
+import { PageHero } from "@/app/components/PageHero";
+import ProductGridSkeleton from "@/app/components/ProductGridSkeleton";
+import { formatPrice } from "@/lib/format";
 import WishlistHeart from "@/app/components/WishlistHeart";
 import { useCart } from "@/lib/CartContext";
+import { useToast } from "@/lib/ToastContext";
 import { useWishlist } from "@/lib/useWishlist";
+import { publicImageSrc } from "@/lib/image-src";
+import {
+  pageContent,
+  pageProductCard,
+  pageProductImage,
+  pageShell,
+} from "@/lib/page-classes";
+import { pageOutlineButton } from "@/lib/ui";
 
 const PAGE_SIZE = 12;
 
@@ -73,15 +85,13 @@ function CollectionContent() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [notFound, setNotFound] = useState(false);
-  const [toastMessage, setToastMessage] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const { showToast } = useToast();
 
   const loadingMoreRef = useRef(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
 
   const notify = (text: string, type: "success" | "error") => {
-    setToastMessage(text);
-    setToastType(type);
+    showToast(text, type);
   };
 
   const buildQuery = useCallback(
@@ -208,86 +218,85 @@ function CollectionContent() {
 
   if (notFound) {
     return (
-      <div className="container-main py-10">
-        <h1 className="h32 mb-4">Коллекция не найдена</h1>
-        <Link href="/catalog" className="underline">
-          В каталог
-        </Link>
+      <div className={pageShell}>
+        <div className={`${pageContent} pt-8 sm:pt-10`}>
+          <EmptyState
+            icon="◇"
+            title="Коллекция не найдена"
+            description="Возможно, ссылка устарела или коллекция была удалена."
+            actionLabel="В каталог"
+            actionHref="/catalog"
+          />
+        </div>
       </div>
     );
   }
 
   if (loading && products.length === 0 && !notFound) {
     return (
-      <div className="text-center mt-10 text20">Загрузка коллекции…</div>
+      <ProductGridSkeleton
+        count={8}
+        columns="grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+        label="Загрузка коллекции"
+      />
     );
   }
 
   const hasMore = products.length < total;
 
   return (
-    <div className="min-h-screen py-8 text-black">
-      <div className="container-main">
-        {toastMessage && (
-          <div className="mb-4">
-            <Toast message={toastMessage} type={toastType} />
-          </div>
-        )}
-
-        <Breadcrumbs items={[
-          { label: "Каталог", href: "/catalog" },
-          { label: meta?.name ?? slug },
-        ]} />
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
+        <Breadcrumbs
+          items={[
+            { label: "Каталог", href: "/catalog" },
+            ...(meta?.brand
+              ? [
+                  {
+                    label: meta.brand.name,
+                    href: meta.brand.is_celebrity
+                      ? `/celebrities/${meta.brand.slug}`
+                      : `/brands/${meta.brand.slug}`,
+                  },
+                ]
+              : []),
+            { label: meta?.name ?? slug },
+          ]}
+        />
 
         {meta && (
-          <header className="mb-10">
-            <p className="text16 text-gray-500 mb-1">
-              {meta.brand ? (
-                <Link
-                  href={
-                    meta.brand.is_celebrity
-                      ? `/celebrities/${meta.brand.slug}`
-                      : `/brands/${meta.brand.slug}`
-                  }
-                  className="hover:underline"
-                >
-                  {meta.brand.name}
-                </Link>
-              ) : (
-                "Коллекция"
-              )}
-            </p>
-            <h1 className="h32 mb-2">{meta.name}</h1>
-            {meta.description && (
-              <p className="text16 text-gray-600 max-w-2xl">{meta.description}</p>
-            )}
-          </header>
+          <PageHero
+            eyebrow={meta.brand?.name ?? "Collection"}
+            title={meta.name}
+            description={meta.description ?? "Товары коллекции — добавляйте в корзину и избранное."}
+            variant="light"
+          />
         )}
 
         {products.length === 0 && !loading ? (
-          <p className="text16 text-gray-500">В этой коллекции пока нет товаров.</p>
+          <EmptyState
+            icon="◇"
+            title="Коллекция пуста"
+            description="Товары скоро появятся — загляните в каталог."
+            actionLabel="В каталог"
+            actionHref="/catalog"
+          />
         ) : (
           <>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+            <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
               {products.map((product) => (
-                <article
-                  key={product.id}
-                  className="bg-[#d9d9d9] border border-black/10 overflow-hidden flex flex-col"
-                >
-                  <div className="relative w-full h-64 bg-[#cfcfcf]">
-                    <Link
-                      href={`/product/${product.id}`}
-                      className="block absolute inset-0"
-                    >
+                <article key={product.id} className={`${pageProductCard} flex flex-col`}>
+                  <div className={`${pageProductImage} aspect-[4/5] w-full overflow-hidden`}>
+                    <Link href={`/product/${product.id}`} className="absolute inset-0 block">
                       <Image
-                        src={product.image_url}
+                        src={publicImageSrc(product.image_url)}
                         alt={product.name}
                         fill
                         unoptimized
-                        className="object-cover"
+                        className="object-cover transition duration-300 group-hover:scale-105"
                       />
                     </Link>
-                    <div className="absolute top-2 right-2 z-10">
+                    <div className="absolute right-2 top-2 z-10">
                       <WishlistHeart
                         saved={wishlistIds.has(product.id)}
                         onToggle={() =>
@@ -298,27 +307,22 @@ function CollectionContent() {
                       />
                     </div>
                   </div>
-                  <div className="p-4 bg-[#f3f3f3] flex flex-col flex-1">
+                  <div className="flex flex-1 flex-col p-3 sm:p-4">
                     {product.brand && (
-                      <p className="text14 text-gray-500 mb-0.5">
+                      <p className="mb-1 text-xs font-medium uppercase tracking-wider text-neutral-500">
                         {product.brand.name}
                       </p>
                     )}
-                    {product.collection && (
-                      <span className="text14 inline-block mb-1 px-2 py-0.5 border border-black/20 w-fit">
-                        {product.collection.name}
-                      </span>
-                    )}
-                    <p className="text16 text-black mb-1">{product.price} ₽</p>
-                    <Link href={`/product/${product.id}`} className="block mb-1">
-                      <h2 className="text16 font-semibold hover:underline line-clamp-2 min-h-[44px]">
+                    <p className="mb-1 text-sm font-bold">{formatPrice(product.price)}</p>
+                    <Link href={`/product/${product.id}`} className="mb-2 block">
+                      <h2 className="line-clamp-2 min-h-[40px] text-sm font-semibold transition group-hover:underline">
                         {product.name}
                       </h2>
                     </Link>
                     <button
                       type="button"
                       onClick={() => addToCart(product.id)}
-                      className="w-full border border-black py-2 text16 bg-white hover:bg-gray-100 mt-auto"
+                      className={`mt-auto ${pageOutlineButton} !min-h-[36px] !text-xs`}
                     >
                       В корзину
                     </button>
@@ -328,12 +332,10 @@ function CollectionContent() {
             </div>
             {loadingMore && (
               <div className="flex justify-center py-8">
-                <div className="h-8 w-8 border-2 border-black border-t-transparent rounded-full animate-spin" />
+                <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-900 dark:border-neutral-600 dark:border-t-white" />
               </div>
             )}
-            {hasMore && (
-              <div ref={sentinelRef} className="h-4" aria-hidden />
-            )}
+            {hasMore && <div ref={sentinelRef} className="h-4" aria-hidden />}
           </>
         )}
       </div>

@@ -6,9 +6,15 @@ import { apiUrl } from "./api";
 interface CartContextValue {
   count: number;
   refreshCart: () => Promise<void>;
+  /** Оптимистично увеличить счётчик до ответа API */
+  bumpCart: (delta?: number) => void;
 }
 
-const CartContext = createContext<CartContextValue>({ count: 0, refreshCart: async () => {} });
+const CartContext = createContext<CartContextValue>({
+  count: 0,
+  refreshCart: async () => {},
+  bumpCart: () => {},
+});
 
 export function CartProvider({ children }: { children: ReactNode }) {
   const [count, setCount] = useState(0);
@@ -31,8 +37,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const bumpCart = useCallback((delta = 1) => {
+    setCount((c) => Math.max(0, c + delta));
+  }, []);
+
   return (
-    <CartContext.Provider value={{ count, refreshCart }}>
+    <CartContext.Provider value={{ count, refreshCart, bumpCart }}>
       {children}
     </CartContext.Provider>
   );

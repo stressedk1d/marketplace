@@ -5,8 +5,22 @@ import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
-import Toast from "@/app/components/Toast";
+import CheckoutSteps from "@/app/components/CheckoutSteps";
+import { CheckoutPageSkeleton } from "@/app/components/ProductGridSkeleton";
 import { useCart } from "@/lib/CartContext";
+import { useToast } from "@/lib/ToastContext";
+import { formatPrice } from "@/lib/format";
+import { formatPhoneInput, phoneDigits } from "@/lib/phone";
+import {
+  validateCheckoutForm,
+  type CheckoutField,
+  type CheckoutFieldErrors,
+} from "@/lib/checkout-validation";
+import { pageCard, pageCardPadded, pageOutlineButton, pageShell, uiForm } from "@/lib/ui";
+import { pageContent, pageCtaPrimary, pageSummaryCard } from "@/lib/page-classes";
+import { PageHero } from "@/app/components/PageHero";
+import { DeliveryProgress } from "@/app/components/DeliveryProgress";
+import { publicImageSrc } from "@/lib/image-src";
 
 interface CartItem {
   id: number;
@@ -15,11 +29,13 @@ interface CartItem {
   price: number;
   quantity: number;
   image_url: string;
+  size?: string;
 }
 
 export default function CheckoutPage() {
   const router = useRouter();
   const { refreshCart } = useCart();
+  const { showToast } = useToast();
 
   const [items, setItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -31,14 +47,14 @@ export default function CheckoutPage() {
   const [city, setCity] = useState("");
   const [address, setAddress] = useState("");
   const [comment, setComment] = useState("");
-
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
-
-  const notify = (text: string, type: "success" | "error" | "info" = "info") => {
-    setMessage(text);
-    setMessageType(type);
-  };
+  const [promoCode, setPromoCode] = useState("");
+  const [promoDiscount, setPromoDiscount] = useState(0);
+  const [promoApplied, setPromoApplied] = useState<string | null>(null);
+  const [promoError, setPromoError] = useState("");
+  const [promoValidating, setPromoValidating] = useState(false);
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
+  const [fieldErrors, setFieldErrors] = useState<CheckoutFieldErrors>({});
+  const [touched, setTouched] = useState<Partial<Record<CheckoutField, boolean>>>({});
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -56,14 +72,76 @@ export default function CheckoutPage() {
         }
       })
       .finally(() => setLoading(false));
+
+    apiFetch(apiUrl("/auth/profile"), { headers: { Authorization: `Bearer ${token}` } })
+      .then(async (res) => {
+        if (res.ok) {
+          const profile = await res.json();
+          setLoyaltyPoints(Number(profile.loyalty_points) || 0);
+          if (profile.full_name) {
+            setFullName((prev) => prev || profile.full_name);
+          }
+        }
+      })
+      .catch(() => {});
   }, [router]);
 
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
+  const finalTotal = Math.max(0, totalPrice - promoDiscount);
+  const pointsToEarn = Math.floor(finalTotal * 0.01);
+
+  const validatePromo = async (code: string, subtotal: number) => {
+    const trimmed = code.trim();
+    if (!trimmed) {
+      setPromoDiscount(0);
+      setPromoApplied(null);
+      setPromoError("");
+      return;
+    }
+    setPromoValidating(true);
+    setPromoError("");
+    try {
+      const params = new URLSearchParams({
+        code: trimmed,
+        subtotal: String(subtotal),
+      });
+      const res = await fetch(apiUrl(`/promo/validate?${params}`));
+      const data = await res.json();
+      if (!res.ok) {
+        setPromoDiscount(0);
+        setPromoApplied(null);
+        setPromoError(typeof data.detail === "string" ? data.detail : "Промокод недействителен");
+        return;
+      }
+      setPromoDiscount(Number(data.discount) || 0);
+      setPromoApplied(data.code ?? trimmed);
+      setPromoError("");
+    } catch {
+      setPromoError("Не удалось проверить промокод");
+    } finally {
+      setPromoValidating(false);
+    }
+  };
+
+  const handlePromoBlur = () => {
+    void validatePromo(promoCode, totalPrice);
+  };
+
+  const inputClass = (field: CheckoutField) =>
+    `${uiForm.input} ${fieldErrors[field] && touched[field] ? uiForm.inputError : ""}`;
+
+  const markTouched = (field: CheckoutField) => {
+    setTouched((prev) => ({ ...prev, [field]: true }));
+  };
 
   const handleSubmit = async () => {
-    if (!fullName.trim() || !phone.trim() || !city.trim() || !address.trim()) {
-      notify("Заполните все обязательные поля", "error");
+    const errors = validateCheckoutForm(fullName, phone, city, address);
+    setFieldErrors(errors);
+    setTouched({ fullName: true, phone: true, city: true, address: true });
+
+    if (Object.keys(errors).length > 0) {
+      showToast("Проверьте поля формы", "error");
       return;
     }
 
@@ -83,43 +161,67 @@ export default function CheckoutPage() {
         },
         body: JSON.stringify({
           full_name: fullName.trim(),
-          phone: phone.trim(),
+          phone: phoneDigits(phone),
           city: city.trim(),
           address: address.trim(),
           comment: comment.trim(),
           pay_method: payMethod,
+          promo_code: promoApplied || promoCode.trim() || null,
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        notify(data.detail || "Не удалось оформить заказ", "error");
+      let data: { detail?: string | { msg?: string }[]; order_id?: number; loyalty_points_earned?: number } = {};
+      try {
+        data = await res.json();
+      } catch {
+        showToast(
+          res.ok ? "Не удалось прочитать ответ сервера" : `Ошибка сервера (${res.status})`,
+          "error"
+        );
         return;
       }
-      notify(`Заказ #${data.order_id} успешно оформлен`, "success");
+      if (!res.ok) {
+        const detail = data.detail;
+        const message =
+          typeof detail === "string"
+            ? detail
+            : Array.isArray(detail)
+              ? detail.map((d) => d.msg ?? String(d)).join(", ")
+              : "Не удалось оформить заказ";
+        showToast(message, "error");
+        return;
+      }
+      showToast(
+        data.loyalty_points_earned
+          ? `Заказ #${data.order_id} оформлен · +${data.loyalty_points_earned} баллов`
+          : `Заказ #${data.order_id} успешно оформлен`,
+        "success"
+      );
       refreshCart();
       setTimeout(() => router.push("/orders"), 1200);
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
         router.push("/login?reason=session_expired");
       } else {
-        notify("Ошибка соединения с сервером", "error");
+        showToast("Ошибка соединения с сервером", "error");
       }
     } finally {
       setSubmitting(false);
     }
   };
 
-  if (loading) {
-    return <div className="text-center mt-10 text20">Загрузка...</div>;
-  }
+  if (loading) return <CheckoutPageSkeleton />;
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen py-8">
-        <div className="container-main text-black text-center py-16">
+      <div className={pageShell}>
+        <div className="container-main text-center text-black py-16">
+          <CheckoutSteps current="checkout" />
           <h1 className="h32 mb-4">Корзина пуста</h1>
           <p className="text16 text-gray-500 mb-6">Добавьте товары, чтобы оформить заказ</p>
-          <Link href="/catalog" className="text16 underline">
+          <Link
+            href="/catalog"
+            className="inline-block rounded-md bg-black px-6 py-3 text16 text-white hover:bg-black/90"
+          >
             Перейти в каталог
           </Link>
         </div>
@@ -128,110 +230,155 @@ export default function CheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
-        {message && (
-          <div className="mb-4">
-            <Toast message={message} type={messageType} />
-          </div>
-        )}
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10 text-black dark:text-[var(--foreground)]`}>
+        <CheckoutSteps current="checkout" />
 
-        <div className="flex items-center gap-3 mb-6">
-          <Link href="/cart" className="text16 text-gray-500 hover:text-black">
+        <div className="mb-4">
+          <Link href="/cart" className="text-sm text-neutral-500 transition hover:text-neutral-900 dark:hover:text-white">
             ← Вернуться в корзину
           </Link>
         </div>
 
-        <h1 className="h32 mb-6">Оформление заказа</h1>
+        <PageHero
+          eyebrow="Checkout"
+          title="Оформление заказа"
+          description="Заполните адрес доставки — мы соберём заказ и отправим уведомление на почту."
+          variant="light"
+        />
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Левая колонка — форма доставки */}
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-4">
-            {/* Адрес доставки */}
-            <div className="border border-black/15 bg-white p-5">
+            <div className={`rounded-2xl ${pageCardPadded}`}>
               <h2 className="text20 font-semibold mb-4">Адрес доставки</h2>
-
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <div>
-                  <label className="text16 text-gray-500 mb-1 block">
+                  <label className={uiForm.label}>
                     ФИО получателя <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
+                    onChange={(e) => {
+                      setFullName(e.target.value);
+                      if (touched.fullName) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          fullName: validateCheckoutForm(e.target.value, phone, city, address).fullName,
+                        }));
+                      }
+                    }}
+                    onBlur={() => markTouched("fullName")}
                     placeholder="Иванов Иван Иванович"
-                    className="w-full border border-black/15 px-3 py-2 text16 outline-none focus:border-black"
+                    className={inputClass("fullName")}
+                    aria-invalid={!!fieldErrors.fullName}
                   />
+                  {touched.fullName && fieldErrors.fullName && (
+                    <p className={uiForm.error}>{fieldErrors.fullName}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="text16 text-gray-500 mb-1 block">
+                  <label className={uiForm.label}>
                     Телефон <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="tel"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      const formatted = formatPhoneInput(e.target.value);
+                      setPhone(formatted);
+                      if (touched.phone) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          phone: validateCheckoutForm(fullName, formatted, city, address).phone,
+                        }));
+                      }
+                    }}
+                    onBlur={() => markTouched("phone")}
                     placeholder="+7 (999) 123-45-67"
-                    className="w-full border border-black/15 px-3 py-2 text16 outline-none focus:border-black"
+                    className={inputClass("phone")}
+                    aria-invalid={!!fieldErrors.phone}
                   />
+                  {touched.phone && fieldErrors.phone && (
+                    <p className={uiForm.error}>{fieldErrors.phone}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="text16 text-gray-500 mb-1 block">
+                  <label className={uiForm.label}>
                     Город <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={(e) => {
+                      setCity(e.target.value);
+                      if (touched.city) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          city: validateCheckoutForm(fullName, phone, e.target.value, address).city,
+                        }));
+                      }
+                    }}
+                    onBlur={() => markTouched("city")}
                     placeholder="Москва"
-                    className="w-full border border-black/15 px-3 py-2 text16 outline-none focus:border-black"
+                    className={inputClass("city")}
+                    aria-invalid={!!fieldErrors.city}
                   />
+                  {touched.city && fieldErrors.city && (
+                    <p className={uiForm.error}>{fieldErrors.city}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="text16 text-gray-500 mb-1 block">
-                    Адрес (улица, дом, квартира) <span className="text-red-500">*</span>
+                  <label className={uiForm.label}>
+                    Адрес <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(e) => {
+                      setAddress(e.target.value);
+                      if (touched.address) {
+                        setFieldErrors((prev) => ({
+                          ...prev,
+                          address: validateCheckoutForm(fullName, phone, city, e.target.value).address,
+                        }));
+                      }
+                    }}
+                    onBlur={() => markTouched("address")}
                     placeholder="ул. Пушкина, д. 10, кв. 5"
-                    className="w-full border border-black/15 px-3 py-2 text16 outline-none focus:border-black"
+                    className={inputClass("address")}
+                    aria-invalid={!!fieldErrors.address}
                   />
+                  {touched.address && fieldErrors.address && (
+                    <p className={uiForm.error}>{fieldErrors.address}</p>
+                  )}
                 </div>
 
                 <div>
-                  <label className="text16 text-gray-500 mb-1 block">
-                    Комментарий к заказу
-                  </label>
+                  <label className={uiForm.label}>Комментарий к заказу</label>
                   <textarea
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Дополнительная информация для курьера"
                     rows={3}
-                    className="w-full border border-black/15 px-3 py-2 text16 outline-none focus:border-black resize-none"
+                    className={`${uiForm.input} resize-none`}
                   />
                 </div>
               </div>
             </div>
 
-            {/* Способ доставки */}
-            <div className="border border-black/15 bg-white p-5">
+            <div className={`rounded-2xl ${pageCardPadded}`}>
               <h2 className="text20 font-semibold mb-1">Способ доставки</h2>
-              <p className="text16 text-gray-500 mb-3">Курьерская доставка по указанному адресу</p>
+              <p className="text16 text-gray-500 mb-2">Курьерская доставка по указанному адресу</p>
               <p className="text16 font-semibold">Доставка VogueWay | Бесплатно</p>
             </div>
 
-            {/* Товары в заказе */}
-            <div className="border border-black/15 bg-white">
-              <div className="px-5 py-3 border-b border-black/10">
-                <h2 className="text20 font-semibold">
-                  Товары в заказе ({totalCount})
-                </h2>
+            <div className={`overflow-hidden rounded-2xl ${pageCard}`}>
+              <div className="border-b border-black/10 px-5 py-3">
+                <h2 className="text20 font-semibold">Товары в заказе ({totalCount})</h2>
               </div>
               {items.map((item, idx) => (
                 <div
@@ -239,24 +386,17 @@ export default function CheckoutPage() {
                   className={`p-4 ${idx < items.length - 1 ? "border-b border-black/10" : ""}`}
                 >
                   <div className="flex gap-4">
-                    <div className="relative w-16 h-16 bg-[#d9d9d9] shrink-0">
-                      <Image
-                        src={item.image_url}
-                        alt={item.name}
-                        fill
-                        unoptimized
-                        className="object-cover"
-                      />
+                    <div className="relative h-16 w-16 shrink-0 bg-[#d9d9d9]">
+                      <Image src={publicImageSrc(item.image_url)} alt={item.name} fill unoptimized className="object-cover" />
                     </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0 flex-1">
                       <p className="text16 font-semibold line-clamp-2">{item.name}</p>
-                      <div className="flex justify-between items-center mt-1">
-                        <span className="text16 text-gray-500">
-                          {item.quantity} шт.
-                        </span>
-                        <span className="text16 text-black font-semibold">
-                          {item.price * item.quantity} ₽
-                        </span>
+                      {item.size ? (
+                        <p className="text14 text-gray-500">Размер: {item.size}</p>
+                      ) : null}
+                      <div className="mt-1 flex justify-between">
+                        <span className="text16 text-gray-500">{item.quantity} шт.</span>
+                        <span className="text16 font-semibold">{formatPrice(item.price * item.quantity)}</span>
                       </div>
                     </div>
                   </div>
@@ -265,65 +405,111 @@ export default function CheckoutPage() {
             </div>
           </div>
 
-          {/* Правая колонка — итог */}
-          <div>
-            <div className="border border-black/15 bg-white p-5 lg:sticky lg:top-8">
+          <div className="space-y-4 lg:sticky lg:top-28 lg:self-start">
+            <DeliveryProgress subtotal={totalPrice} />
+            <div className={pageSummaryCard}>
               <h2 className="text20 font-semibold mb-4">Ваш заказ</h2>
-
               <p className="text16 font-semibold mb-2">Способ оплаты</p>
-              <div className="flex mb-4">
-                <button
-                  onClick={() => setPayMethod("pickup")}
-                  className={`flex-1 py-1.5 text16 ${
-                    payMethod === "pickup"
-                      ? "bg-black text-white"
-                      : "border border-black bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  При получении
-                </button>
-                <button
-                  onClick={() => setPayMethod("online")}
-                  className={`flex-1 py-1.5 text16 ${
-                    payMethod === "online"
-                      ? "bg-black text-white"
-                      : "border border-black bg-white hover:bg-gray-50"
-                  }`}
-                >
-                  Онлайн
-                </button>
-              </div>
-
-              <div className="space-y-1 mb-4">
-                <div className="flex justify-between text16 text-black">
-                  <span>Товары, {totalCount} шт.</span>
-                  <span>{totalPrice} ₽</span>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod("pickup")}
+                    className={`flex-1 rounded-full py-2 text-sm ${
+                      payMethod === "pickup"
+                        ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950"
+                        : pageOutlineButton
+                    }`}
+                  >
+                    При получении
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod("online")}
+                    className={`flex-1 rounded-full py-2 text-sm ${
+                      payMethod === "online"
+                        ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950"
+                        : pageOutlineButton
+                    }`}
+                  >
+                    Онлайн
+                  </button>
                 </div>
-                <div className="flex justify-between text16 text-black">
+              <div className="mb-4 space-y-1">
+                <div className="flex justify-between text16">
+                  <span>Товары, {totalCount} шт.</span>
+                  <span>{formatPrice(totalPrice)}</span>
+                </div>
+                <div className="flex justify-between text16">
                   <span>Доставка</span>
                   <span className="text-green-600">Бесплатно</span>
                 </div>
+                {promoDiscount > 0 && (
+                  <div className="flex justify-between text16 text-green-700">
+                    <span>Скидка{promoApplied ? ` (${promoApplied})` : ""}</span>
+                    <span>−{formatPrice(promoDiscount)}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex justify-between text20 font-semibold mb-5 text-black border-t border-black/10 pt-3">
+              <div className="mb-4 rounded-xl border border-neutral-200/90 bg-neutral-50/80 p-3 dark:border-neutral-700 dark:bg-neutral-900/40">
+                <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  Программа лояльности
+                </p>
+                <div className="mt-2 flex justify-between text-sm">
+                  <span className="text-neutral-600 dark:text-neutral-400">На счёте</span>
+                  <span className="font-semibold">{loyaltyPoints} баллов</span>
+                </div>
+                {pointsToEarn > 0 && (
+                  <div className="mt-1 flex justify-between text-sm text-emerald-700 dark:text-emerald-400">
+                    <span>За этот заказ</span>
+                    <span className="font-semibold">+{pointsToEarn}</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="mb-4">
+                <label className={uiForm.label}>Промокод</label>
+                <input
+                  type="text"
+                  value={promoCode}
+                  onChange={(e) => setPromoCode(e.target.value.toUpperCase())}
+                  onBlur={handlePromoBlur}
+                  placeholder="WELCOME10"
+                  className={uiForm.input}
+                  aria-invalid={!!promoError}
+                />
+                <p className="mt-1.5 text-xs text-neutral-500">
+                  Промокоды:{" "}
+                  <button type="button" className="font-semibold underline" onClick={() => { setPromoCode("WELCOME10"); void validatePromo("WELCOME10", totalPrice); }}>WELCOME10</button>
+                  {" "}(−10%) или{" "}
+                  <button type="button" className="font-semibold underline" onClick={() => { setPromoCode("SAVE500"); void validatePromo("SAVE500", totalPrice); }}>SAVE500</button>
+                  {" "}(−500 ₽ от 3000 ₽)
+                </p>
+                {promoValidating && (
+                  <p className="mt-1 text14 text-gray-400">Проверка...</p>
+                )}
+                {promoError && (
+                  <p className={uiForm.error}>{promoError}</p>
+                )}
+                {promoApplied && !promoError && promoDiscount > 0 && (
+                  <p className="mt-1 text14 text-green-600">Промокод применён</p>
+                )}
+              </div>
+              <div className="mb-5 flex justify-between border-t border-black/10 pt-3 text20 font-semibold">
                 <span>Итого</span>
-                <span>{totalPrice} ₽</span>
+                <span>{formatPrice(finalTotal)}</span>
               </div>
-
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className={`w-full py-3 text20 border border-black ${
-                  submitting
-                    ? "bg-gray-400 text-white"
-                    : "bg-black text-white hover:bg-gray-900"
-                }`}
+                aria-busy={submitting}
+                className={pageCtaPrimary}
               >
                 {submitting ? "Оформляем..." : "Оформить заказ"}
               </button>
-
-              <p className="text-center text16 text-gray-400 mt-3">
-                Нажимая «Оформить заказ», вы соглашаетесь с правилами пользования торговой площадкой
+              <p className="mt-3 text-center text14 text-gray-400">
+                Нажимая кнопку, вы соглашаетесь с правилами пользования площадкой
               </p>
             </div>
           </div>

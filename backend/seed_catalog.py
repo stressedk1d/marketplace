@@ -579,7 +579,7 @@ def _sync_product_images(
     db: Session,
     image_sets: dict[str, list[str]],
 ) -> None:
-    """Обновляет image_url у существующих товаров по имени (идемпотентно)."""
+    """Обновляет image_url и строки product_images по имени товара (идемпотентно)."""
     updated = 0
     for product_name, images in image_sets.items():
         if not images:
@@ -591,20 +591,42 @@ def _sync_product_images(
         if product.image_url != main_image:
             product.image_url = main_image
             updated += 1
+
+        db.query(models.ProductImage).filter(
+            models.ProductImage.product_id == product.id
+        ).delete(synchronize_session=False)
+        for position, url in enumerate(images):
+            db.add(
+                models.ProductImage(
+                    product_id=product.id,
+                    url=url,
+                    position=position,
+                    is_primary=position == 0,
+                )
+            )
     if updated:
         db.commit()
         print(f"[DB] Updated image_url for {updated} products.")
+    else:
+        db.commit()
 
 
 def _clear_product_refs(db: Session, product_ids: list[int]) -> None:
     """Remove cart/wishlist/review/order refs for given product IDs, ignoring missing tables."""
-    from sqlalchemy.exc import ProgrammingError
-    for model_cls in (models.CartItem, models.WishlistItem, models.Review, models.OrderItem):
+    from sqlalchemy.exc import OperationalError, ProgrammingError
+
+    for model_cls in (
+        models.CartItem,
+        models.WishlistItem,
+        models.Review,
+        models.OrderItem,
+        models.ProductVariant,
+    ):
         sp = db.begin_nested()
         try:
             db.query(model_cls).filter(model_cls.product_id.in_(product_ids)).delete(synchronize_session=False)
             sp.commit()
-        except ProgrammingError:
+        except (OperationalError, ProgrammingError):
             sp.rollback()
 
 
@@ -820,6 +842,126 @@ def seed_catalog(db: Session) -> None:
         _remove_brand_by_slug(db, "drake")
 
     _classify_product_types(db)
+    _seed_product_variants(db)
+    _seed_promo_codes(db)
+    _seed_demo_reviews(db)
+
+
+CLOTHING_SIZES = ["XS", "S", "M", "L", "XL", "XXL"]
+SHOE_SIZES = ["38", "39", "40", "41", "42", "43", "44"]
+ACCESSORY_SIZES = ["One Size"]
+
+
+def _seed_product_variants(db: Session) -> None:
+    """Размеры и остатки для всех товаров."""
+    products = db.query(models.Product).all()
+    added = 0
+    for product in products:
+        existing = (
+            db.query(models.ProductVariant)
+            .filter(models.ProductVariant.product_id == product.id)
+            .count()
+        )
+        if existing:
+            continue
+
+        ptype = product.product_type
+        if ptype == models.ProductType.shoes:
+            sizes = SHOE_SIZES
+        elif ptype == models.ProductType.accessories:
+            sizes = ACCESSORY_SIZES
+        else:
+            sizes = CLOTHING_SIZES
+
+        for i, size in enumerate(sizes):
+            stock = 3 if size in ("M", "40", "One Size") else (2 if i % 2 == 0 else 1)
+            db.add(
+                models.ProductVariant(
+                    product_id=product.id,
+                    size=size,
+                    stock=stock,
+                )
+            )
+            added += 1
+
+    if added:
+        db.commit()
+        print(f"[DB] Seeded {added} product variants.")
+
+
+def _seed_promo_codes(db: Session) -> None:
+    demos = [
+        ("WELCOME10", 10.0, None, 0.0),
+        ("SAVE500", None, 500.0, 3000.0),
+    ]
+    added = 0
+    for code, pct, fixed, min_amt in demos:
+        exists = db.query(models.PromoCode).filter(models.PromoCode.code == code).first()
+        if exists:
+            continue
+        db.add(
+            models.PromoCode(
+                code=code,
+                discount_percent=pct,
+                discount_fixed=fixed,
+                min_order_amount=min_amt,
+                is_active=True,
+            )
+        )
+        added += 1
+    if added:
+        db.commit()
+        print(f"[DB] Seeded {added} promo codes.")
+
+
+DEMO_REVIEW_TEXTS: list[tuple[int, str]] = [
+    (5, "Отличное качество, всё как на фото."),
+    (4, "Хороший товар, рекомендую."),
+    (5, "Быстрая доставка, размер подошёл."),
+    (3, "Нормально за свои деньги."),
+    (4, "Стильно смотрится, буду заказывать ещё."),
+    (5, "Превзошло ожидания — демо-отзыв."),
+]
+
+
+def _seed_demo_reviews(db: Session) -> None:
+    """Демо-отзывы для звёзд на карточках (один отзыв на товар от первого пользователя)."""
+    user = db.query(models.User).order_by(models.User.id.asc()).first()
+    if not user:
+        return
+
+    products = (
+        db.query(models.Product)
+        .order_by(models.Product.views_count.desc(), models.Product.id.asc())
+        .limit(24)
+        .all()
+    )
+    added = 0
+    for i, product in enumerate(products):
+        exists = (
+            db.query(models.Review)
+            .filter(
+                models.Review.user_id == user.id,
+                models.Review.product_id == product.id,
+            )
+            .first()
+        )
+        if exists:
+            continue
+        rating, text = DEMO_REVIEW_TEXTS[i % len(DEMO_REVIEW_TEXTS)]
+        db.add(
+            models.Review(
+                user_id=user.id,
+                product_id=product.id,
+                rating=rating,
+                text=text,
+            )
+        )
+        added += 1
+
+    if added:
+        db.commit()
+        print(f"[DB] Seeded {added} demo reviews.")
 
 
 SHOES_KEYWORDS = {

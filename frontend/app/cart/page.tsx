@@ -6,9 +6,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
-import Toast from "@/app/components/Toast";
+import CheckoutSteps from "@/app/components/CheckoutSteps";
+import { DeliveryProgress } from "@/app/components/DeliveryProgress";
+import EmptyState from "@/app/components/EmptyState";
+import GuestAuthBanner from "@/app/components/GuestAuthBanner";
+import { PageHero } from "@/app/components/PageHero";
+import { SuggestedProducts } from "@/app/components/SuggestedProducts";
+import { CartPageSkeleton } from "@/app/components/ProductGridSkeleton";
 import { useCart } from "@/lib/CartContext";
+import { useToast } from "@/lib/ToastContext";
 import { useWishlist } from "@/lib/useWishlist";
+import { formatPrice } from "@/lib/format";
+import { publicImageSrc } from "@/lib/image-src";
+import {
+  pageCartLineItem,
+  pageCtaPrimary,
+  pageContent,
+  pageQtyButton,
+  pageShell,
+  pageSummaryCard,
+} from "@/lib/page-classes";
+import { pageCardPadded, pageOutlineButton } from "@/lib/ui";
 
 interface CartItem {
   id: number;
@@ -17,6 +35,7 @@ interface CartItem {
   price: number;
   quantity: number;
   image_url: string;
+  size?: string;
 }
 
 interface Product {
@@ -36,24 +55,25 @@ interface ProductListResponse {
 
 export default function CartPage() {
   const router = useRouter();
-  const { refreshCart } = useCart();
+  const { refreshCart, bumpCart } = useCart();
+  const [isGuest, setIsGuest] = useState(true);
+  const { showToast } = useToast();
   const { toggle: toggleWishlist } = useWishlist();
   const [items, setItems] = useState<CartItem[]>([]);
   const [payMethod, setPayMethod] = useState<"pickup" | "online">("pickup");
   const [suggested, setSuggested] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
 
-  const [message, setMessage] = useState("");
-  const [messageType, setMessageType] = useState<"success" | "error" | "info">("info");
-
   const notify = (text: string, type: "success" | "error" | "info" = "info") => {
-    setMessage(text);
-    setMessageType(type);
+    showToast(text, type);
   };
 
   const fetchCart = async () => {
     const token = localStorage.getItem("token");
-    if (!token) { setLoading(false); return; }
+    if (!token) {
+      setLoading(false);
+      return;
+    }
     try {
       const res = await apiFetch(apiUrl("/cart"), { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) setItems(await res.json());
@@ -67,24 +87,54 @@ export default function CartPage() {
   };
 
   useEffect(() => {
+    setIsGuest(!localStorage.getItem("token"));
     fetchCart();
     fetch(apiUrl("/products?limit=50&offset=0"))
       .then((r) => r.json())
-      .then((data: ProductListResponse) =>
-        setSuggested(data.items.slice(0, 6))
-      )
+      .then((data: ProductListResponse) => setSuggested(data.items.slice(0, 6)))
       .catch(() => {});
   }, []);
 
-  const removeItem = async (id: number) => {
+  const restoreCartItem = async (productId: number, quantity: number) => {
     const token = localStorage.getItem("token");
+    if (!token) return;
     try {
-      const res = await apiFetch(apiUrl(`/cart/${id}`), {
+      await apiFetch(apiUrl("/cart/add"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({ product_id: productId, quantity }),
+      });
+      await fetchCart();
+      notify("Товар возвращён в корзину", "success");
+    } catch {
+      notify("Не удалось вернуть товар", "error");
+    }
+  };
+
+  const removeItem = async (item: CartItem) => {
+    const token = localStorage.getItem("token");
+    const snapshot = { product_id: item.product_id, quantity: item.quantity, name: item.name };
+    try {
+      const res = await apiFetch(apiUrl(`/cart/${item.id}`), {
         method: "DELETE",
         headers: { Authorization: `Bearer ${token ?? ""}` },
       });
-      if (res.ok) { setItems(items.filter((i) => i.id !== id)); refreshCart(); }
-      else notify("Не удалось удалить товар", "error");
+      if (res.ok) {
+        setItems((prev) => prev.filter((i) => i.id !== item.id));
+        refreshCart();
+        showToast(`«${snapshot.name}» удалён`, "info", {
+          durationMs: 5500,
+          action: {
+            label: "Отменить",
+            onClick: () => void restoreCartItem(snapshot.product_id, snapshot.quantity),
+          },
+        });
+      } else {
+        notify("Не удалось удалить товар", "error");
+      }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") router.push("/login?reason=session_expired");
     }
@@ -92,8 +142,9 @@ export default function CartPage() {
 
   const updateQuantity = async (id: number, newQty: number) => {
     const token = localStorage.getItem("token");
-    if (newQty <= 0) {
-      await removeItem(id);
+    const item = items.find((i) => i.id === id);
+    if (newQty <= 0 && item) {
+      await removeItem(item);
       return;
     }
     try {
@@ -115,208 +166,214 @@ export default function CartPage() {
 
   const addToCart = async (productId: number) => {
     const token = localStorage.getItem("token");
-    if (!token) { router.push("/login"); return; }
+    if (!token) {
+      router.push("/login");
+      return;
+    }
     try {
       await apiFetch(apiUrl("/cart/add"), {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
         body: JSON.stringify({ product_id: productId, quantity: 1 }),
       });
+      bumpCart(1);
       refreshCart();
       notify("Товар добавлен в корзину", "success");
-    } catch {}
+    } catch {
+      /* ignore */
+    }
   };
 
   const totalPrice = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
   const totalCount = items.reduce((sum, i) => sum + i.quantity, 0);
 
-  if (loading) return <div className="text-center mt-10 text20">Загрузка корзины...</div>;
+  if (loading) return <CartPageSkeleton />;
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
         <Breadcrumbs items={[{ label: "Корзина" }]} />
-        {message && <div className="mb-4"><Toast message={message} type={messageType} /></div>}
+        {isGuest && (
+          <GuestAuthBanner message="Войдите в аккаунт, чтобы сохранить корзину и оформить заказ." />
+        )}
+
+        <PageHero
+          eyebrow="Покупки"
+          title="Корзина"
+          description={
+            items.length > 0
+              ? `${totalCount} ${totalCount === 1 ? "товар" : totalCount < 5 ? "товара" : "товаров"} · ${formatPrice(totalPrice)}`
+              : "Добавьте товары из каталога — оформление займёт пару минут."
+          }
+          variant="light"
+        />
+
+        {items.length > 0 && <CheckoutSteps current="cart" />}
 
         {items.length === 0 ? (
-          /* ── ПУСТАЯ КОРЗИНА ── */
           <>
-            <div className="flex flex-col items-center py-16 gap-4">
-              {/* иконка корзины */}
-              <svg width="96" height="96" viewBox="0 0 96 96" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 24h56l-8 36H28L20 24z" stroke="#222" strokeWidth="2" fill="none"/>
-                <line x1="36" y1="52" x2="44" y2="52" stroke="#222" strokeWidth="2"/>
-                <circle cx="36" cy="72" r="4" stroke="#222" strokeWidth="2" fill="none"/>
-                <circle cx="60" cy="72" r="4" stroke="#222" strokeWidth="2" fill="none"/>
-                <path d="M12 16h8l4 8" stroke="#222" strokeWidth="2" strokeLinecap="round"/>
-              </svg>
-              <h2 className="text20 font-semibold">В корзине пока пусто</h2>
-              <p className="text16 text-[#b5a97a]">
-                Загляните на{" "}
-                <Link href="/catalog" className="underline">главную</Link>
-                {" "}— собрали там товары, которые могут вам понравиться
-              </p>
-            </div>
-
-            <section>
-              <h2 className="h32 mb-6">Подобрали для вас</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-                {suggested.map((p) => (
-                  <article key={p.id} className="bg-[#f3f3f3] border border-black/10 flex flex-col">
-                    <Link href={`/product/${p.id}`} className="block">
-                      <div className="relative h-40 bg-[#d9d9d9]">
-                        <Image src={p.image_url} alt={p.name} fill unoptimized className="object-cover" />
-                      </div>
-                    </Link>
-                    <div className="p-3 flex flex-col flex-1">
-                      <p className="text16 text-black mb-1">{p.price} ₽</p>
-                      <p className="text16 font-semibold line-clamp-2 min-h-[40px] mb-2">{p.name}</p>
-                      <button
-                        onClick={() => addToCart(p.id)}
-                        className="w-full border border-black py-1.5 text16 bg-white hover:bg-gray-100 mt-auto"
-                      >
-                        В корзину
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
+            <EmptyState
+              icon="🛒"
+              title="В корзине пока пусто"
+              description="Загляните в каталог — там товары, которые могут вам понравиться."
+              actionLabel="Перейти в каталог"
+              actionHref="/catalog"
+            />
+            <SuggestedProducts
+              title="Подобрали для вас"
+              products={suggested}
+              onAddToCart={(id) => void addToCart(id)}
+            />
           </>
         ) : (
-          /* ── КОРЗИНА С ТОВАРАМИ ── */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Левая колонка — товары */}
-            <div className="lg:col-span-2 space-y-4">
-              <div className="border border-black/15 bg-white">
-                <div className="px-5 py-3 border-b border-black/10">
-                  <h1 className="text20 font-semibold">Магазин</h1>
-                </div>
-                {items.map((item, idx) => (
-                  <div key={item.id} className={`p-4 ${idx < items.length - 1 ? "border-b border-black/10" : ""}`}>
-                    <div className="flex gap-4">
-                      <div className="relative w-20 h-20 bg-[#d9d9d9] shrink-0">
-                        <Image src={item.image_url} alt={item.name} fill unoptimized className="object-cover" />
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            <div className="space-y-4 lg:col-span-2">
+              {items.map((item) => (
+                <article key={item.id} className={pageCartLineItem}>
+                  <div className="relative h-24 w-24 shrink-0 overflow-hidden rounded-xl bg-neutral-200 dark:bg-neutral-800">
+                    <Image
+                      src={publicImageSrc(item.image_url)}
+                      alt={item.name}
+                      fill
+                      unoptimized
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex justify-between gap-3">
+                      <div>
+                        <Link
+                          href={`/product/${item.product_id}`}
+                          className="line-clamp-2 font-semibold text-neutral-900 hover:underline dark:text-neutral-100"
+                        >
+                          {item.name}
+                        </Link>
+                        {item.size ? (
+                          <p className="mt-0.5 text-sm text-neutral-500">Размер: {item.size}</p>
+                        ) : null}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-start gap-2">
-                          <div>
-                            <p className="text16 text-gray-500 mb-0.5">Бренд/знаменитость</p>
-                            <p className="text16 font-semibold line-clamp-2">{item.name}</p>
-                          </div>
-                          <p className="text16 text-black shrink-0">{item.price} ₽</p>
-                        </div>
-                        <div className="flex items-center gap-2 mt-3">
-                          <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">−</button>
-                          <span className="text16 w-6 text-center">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="w-7 h-7 border border-black/30 flex items-center justify-center text16 hover:bg-gray-100">+</button>
-                        </div>
-                        <div className="flex items-center gap-4 mt-3">
-                          <button
-                            onClick={() => {
-                              const token = localStorage.getItem("token");
-                              if (!token) { router.push("/login"); return; }
-                              void toggleWishlist(item.product_id);
-                              notify("Добавлено в избранное", "success");
-                            }}
-                            className="text16 text-gray-400 hover:text-black"
-                            aria-label="В избранное"
-                          >
-                            <Image src="/add-to-favorites.png" alt="В избранное" width={16} height={16} />
-                          </button>
-                          <button
-                            onClick={() => {
-                              const url = `${window.location.origin}/product/${item.product_id}`;
-                              navigator.clipboard?.writeText(url).then(() => notify("Ссылка скопирована", "success")).catch(() => {});
-                            }}
-                            className="text16 text-gray-400 hover:text-black"
-                            aria-label="Поделиться"
-                          >
-                            <Image src="/share-icon.png" alt="Поделиться" width={16} height={16} />
-                          </button>
-                          <button
-                            onClick={() => removeItem(item.id)}
-                            className="text16 text-gray-400 hover:text-black"
-                            aria-label="Удалить"
-                          >
-                            <Image src="/delete-icon.png" alt="Удалить" width={16} height={16} />
-                          </button>
-                        </div>
-                      </div>
+                      <p className="shrink-0 font-semibold">{formatPrice(item.price)}</p>
+                    </div>
+                    <div className="mt-3 flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                        className={pageQtyButton}
+                        aria-label="Уменьшить"
+                      >
+                        −
+                      </button>
+                      <span className="w-8 text-center text-sm font-medium">{item.quantity}</span>
+                      <button
+                        type="button"
+                        onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                        className={pageQtyButton}
+                        aria-label="Увеличить"
+                      >
+                        +
+                      </button>
+                    </div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const token = localStorage.getItem("token");
+                          if (!token) {
+                            router.push("/login");
+                            return;
+                          }
+                          void toggleWishlist(item.product_id);
+                          notify("Добавлено в избранное", "success");
+                        }}
+                        className="text-neutral-400 transition hover:text-neutral-900 dark:hover:text-white"
+                        aria-label="В избранное"
+                      >
+                        <Image src="/add-to-favorites.png" alt="" width={16} height={16} />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void removeItem(item)}
+                        className="text-sm text-neutral-500 transition hover:text-red-600"
+                      >
+                        Удалить
+                      </button>
                     </div>
                   </div>
-                ))}
-              </div>
+                </article>
+              ))}
 
-              {/* Доставка */}
-              <div className="border border-black/15 bg-white p-5">
-                <h2 className="text20 font-semibold mb-1">Доставка в пункт выдачи</h2>
-                <p className="text16 text-gray-500 mb-3">Адрес пункта выдачи, время работы</p>
-                <p className="text16 font-semibold">Доставка VogueWay | Бесплатно</p>
+              <div className={pageCardPadded}>
+                <h2 className="text-lg font-semibold">Доставка в пункт выдачи</h2>
+                <p className="mt-1 text-sm text-neutral-500">Москва и регионы · бесплатно от 5 000 ₽</p>
+                <p className="mt-2 font-medium text-emerald-700 dark:text-emerald-400">VogueWay Delivery</p>
               </div>
             </div>
 
-            {/* Правая колонка — итог */}
-            <div className="space-y-4">
-              <div className="border border-black/15 bg-white p-5">
-                <h2 className="text20 font-semibold mb-1">Доставка в пункт выдачи</h2>
-                <p className="text16 text-gray-500 mb-4">Адрес пункта выдачи, время работы</p>
+            <div className="space-y-4 lg:sticky lg:top-28 lg:self-start">
+              <DeliveryProgress subtotal={totalPrice} />
 
-                <p className="text16 font-semibold mb-2">Оплата картой</p>
-                <div className="flex mb-4">
-                  <button onClick={() => setPayMethod("pickup")} className={`flex-1 py-1.5 text16 ${payMethod === "pickup" ? "bg-black text-white" : "border border-black bg-white hover:bg-gray-50"}`}>При получении</button>
-                  <button onClick={() => setPayMethod("online")} className={`flex-1 py-1.5 text16 ${payMethod === "online" ? "bg-black text-white" : "border border-black bg-white hover:bg-gray-50"}`}>Сразу</button>
+              <div className={pageSummaryCard}>
+                <h2 className="text-lg font-semibold">Итого</h2>
+                <p className="mt-4 text-sm font-medium text-neutral-600 dark:text-neutral-400">
+                  Способ оплаты
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod("pickup")}
+                    className={`flex-1 rounded-full py-2 text-sm ${
+                      payMethod === "pickup"
+                        ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950"
+                        : pageOutlineButton
+                    }`}
+                  >
+                    При получении
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPayMethod("online")}
+                    className={`flex-1 rounded-full py-2 text-sm ${
+                      payMethod === "online"
+                        ? "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950"
+                        : pageOutlineButton
+                    }`}
+                  >
+                    Сразу
+                  </button>
                 </div>
 
-                <div className="flex justify-between text16 mb-1 text-black">
-                  <span>Товары, {totalCount} шт.</span>
-                  <span>{totalPrice} ₽</span>
-                </div>
-                <div className="flex justify-between text20 font-semibold mb-5 text-black">
-                  <span>Итого</span>
-                  <span>{totalPrice} ₽</span>
+                <div className="mt-5 space-y-2 border-t border-neutral-200 pt-4 dark:border-neutral-700">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600 dark:text-neutral-400">Товары, {totalCount} шт.</span>
+                    <span>{formatPrice(totalPrice)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold">
+                    <span>К оплате</span>
+                    <span>{formatPrice(totalPrice)}</span>
+                  </div>
                 </div>
 
                 <button
+                  type="button"
                   onClick={() => router.push("/checkout")}
-                  className="w-full py-3 text20 border border-black bg-black text-white hover:bg-gray-900"
+                  className={`mt-5 ${pageCtaPrimary}`}
                 >
                   Оформить заказ
                 </button>
-                <p className="text-center text16 text-gray-400 mt-3">
-                  Соглашаюсь с правилами пользования торговой площадкой и возврата
+                <p className="mt-3 text-center text-xs text-neutral-400">
+                  Нажимая кнопку, вы соглашаетесь с условиями сервиса
                 </p>
               </div>
             </div>
           </div>
         )}
 
-        {/* Секция "С этим товаром покупают" — только когда корзина не пустая */}
-        {items.length > 0 && suggested.length > 0 && (
-          <section className="mt-12">
-            <h2 className="h32 mb-6">С этим товаром покупают</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
-              {suggested.map((p) => (
-                <article key={p.id} className="bg-[#f3f3f3] border border-black/10 flex flex-col">
-                  <Link href={`/product/${p.id}`} className="block">
-                    <div className="relative h-40 bg-[#d9d9d9]">
-                      <Image src={p.image_url} alt={p.name} fill unoptimized className="object-cover" />
-                    </div>
-                  </Link>
-                  <div className="p-3 flex flex-col flex-1">
-                    <p className="text16 text-black mb-1">{p.price} ₽</p>
-                    <p className="text16 font-semibold line-clamp-2 min-h-[40px] mb-2">{p.name}</p>
-                    <button
-                      onClick={() => addToCart(p.id)}
-                      className="w-full border border-black py-1.5 text16 bg-white hover:bg-gray-100 mt-auto"
-                    >
-                      В корзину
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </section>
+        {items.length > 0 && (
+          <SuggestedProducts
+            title="С этим товаром покупают"
+            products={suggested}
+            onAddToCart={(id) => void addToCart(id)}
+          />
         )}
       </div>
     </div>

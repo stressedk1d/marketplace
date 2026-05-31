@@ -32,7 +32,7 @@ export default function SortSelector({ value, onChange }: SortSelectorProps) {
             className={`${tokens.radius.md} px-3 py-2 text-sm ${ui.transition.base} ${
               active
                 ? ui.pill.pageActive
-                : `text-gray-600 ${tokens.color.hoverSubtle} hover:text-black`
+                : `text-gray-600 dark:text-gray-400 ${tokens.color.hoverSubtle} hover:text-black dark:hover:text-white`
             }`}
             aria-pressed={active}
           >

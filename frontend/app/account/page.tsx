@@ -5,6 +5,17 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+import { PageHero } from "@/app/components/PageHero";
+import { AccountPageSkeleton } from "@/app/components/ProductGridSkeleton";
+import { useToast } from "@/lib/ToastContext";
+import { formatPrice } from "@/lib/format";
+import {
+  pageContent,
+  pageCtaPrimary,
+  pageShell,
+  pageSummaryCard,
+} from "@/lib/page-classes";
+import { pageOutlineButton, uiForm } from "@/lib/ui";
 
 interface Order {
   id: number;
@@ -14,16 +25,21 @@ interface Order {
 }
 
 const STATUS_LABEL: Record<string, string> = {
-  pending:    "В пути",
+  pending: "В пути",
   processing: "Обрабатывается",
-  completed:  "Можно забирать",
-  cancelled:  "Отменён",
+  completed: "Можно забирать",
+  cancelled: "Отменён",
+  created: "Оформлен",
+  paid: "Оплачен",
+  shipped: "Отправлен",
+  delivered: "Доставлен",
 };
 
 export default function AccountPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [fullName, setFullName] = useState("");
+  const [loyaltyPoints, setLoyaltyPoints] = useState(0);
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -32,11 +48,14 @@ export default function AccountPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ text: string; ok: boolean } | null>(null);
+  const { showToast } = useToast();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (!token) { router.push("/login"); return; }
+    if (!token) {
+      router.push("/login");
+      return;
+    }
 
     const headers = { Authorization: `Bearer ${token}` };
 
@@ -48,16 +67,12 @@ export default function AccountPage() {
         setEmail(profile.email ?? "");
         setFullName(profile.full_name ?? "");
         setEditName(profile.full_name ?? "");
+        setLoyaltyPoints(Number(profile.loyalty_points) || 0);
         setOrders(ordersData as Order[]);
       })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [router]);
-
-  const showToast = (text: string, ok: boolean) => {
-    setToast({ text, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
 
   const handleSave = async () => {
     const token = localStorage.getItem("token");
@@ -91,13 +106,13 @@ export default function AccountPage() {
         setCurrentPassword("");
         setNewPassword("");
         setEditing(false);
-        showToast("Профиль обновлён", true);
+        showToast("Профиль обновлён", "success");
       } else {
         const data = await res.json();
-        showToast(data.detail || "Ошибка сохранения", false);
+        showToast(data.detail || "Ошибка сохранения", "error");
       }
     } catch {
-      showToast("Ошибка соединения", false);
+      showToast("Ошибка соединения", "error");
     } finally {
       setSaving(false);
     }
@@ -108,83 +123,76 @@ export default function AccountPage() {
     router.push("/login");
   };
 
-  if (loading) return <div className="text-center mt-10 text20">Загрузка...</div>;
+  if (loading) return <AccountPageSkeleton />;
 
   const recentOrders = orders.slice(0, 3);
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
         <Breadcrumbs items={[{ label: "Аккаунт" }]} />
-        {/* Toast */}
-        {toast && (
-          <div
-            className={`fixed top-6 right-6 z-50 px-5 py-3 text16 shadow-lg border ${
-              toast.ok
-                ? "bg-green-50 border-green-400 text-green-800"
-                : "bg-red-50 border-red-400 text-red-800"
-            }`}
-          >
-            {toast.text}
-          </div>
-        )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Левая панель — профиль */}
-          <aside className="border border-black/15 bg-white p-5 h-fit">
-            {/* Аватар */}
-            <div className="flex items-center gap-3 mb-5">
-              <div className="w-12 h-12 rounded-full bg-[#d9d9d9] flex items-center justify-center flex-shrink-0">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-                  <circle cx="12" cy="8" r="4" stroke="#888" strokeWidth="1.5"/>
-                  <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#888" strokeWidth="1.5" strokeLinecap="round"/>
-                </svg>
+        <PageHero
+          eyebrow="Account"
+          title={fullName || "Личный кабинет"}
+          description="Управляйте профилем, отслеживайте заказы и накапливайте баллы лояльности."
+          variant="light"
+        />
+
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <aside className={`${pageSummaryCard} h-fit lg:sticky lg:top-28 lg:self-start`}>
+            <div className="mb-5 flex items-center gap-3">
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-neutral-200 dark:bg-neutral-700">
+                <span className="text-xl font-bold text-neutral-600 dark:text-neutral-300">
+                  {(fullName || email).charAt(0).toUpperCase()}
+                </span>
               </div>
               <div className="min-w-0">
-                <p className="text16 font-semibold truncate">{fullName || email.split("@")[0]}</p>
-                <p className="text16 text-gray-400 text-sm truncate">{email}</p>
+                <p className="truncate font-semibold text-neutral-900 dark:text-neutral-50">
+                  {fullName || email.split("@")[0]}
+                </p>
+                <p className="truncate text-sm text-neutral-500">{email}</p>
               </div>
             </div>
 
             {editing ? (
-              <div className="space-y-3 mb-5">
+              <div className="mb-5 space-y-3">
                 <div>
-                  <label className="text16 text-gray-500 block mb-1">Имя</label>
+                  <label className={uiForm.label}>Имя</label>
                   <input
                     type="text"
-                    className="w-full border border-black/20 bg-transparent p-2 outline-none text16"
+                    className={uiForm.input}
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                   />
                 </div>
-
-                <p className="text16 text-gray-400 mt-3">Смена пароля</p>
+                <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                  Смена пароля
+                </p>
                 <div>
-                  <label className="text16 text-gray-500 block mb-1">Текущий пароль</label>
+                  <label className={uiForm.label}>Текущий пароль</label>
                   <input
                     type="password"
-                    className="w-full border border-black/20 bg-transparent p-2 outline-none text16"
+                    className={uiForm.input}
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Оставьте пустым, если не меняете"
+                    placeholder="Если меняете пароль"
                   />
                 </div>
                 <div>
-                  <label className="text16 text-gray-500 block mb-1">Новый пароль</label>
+                  <label className={uiForm.label}>Новый пароль</label>
                   <input
                     type="password"
-                    className="w-full border border-black/20 bg-transparent p-2 outline-none text16"
+                    className={uiForm.input}
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Оставьте пустым, если не меняете"
                   />
                 </div>
-
                 <div className="flex gap-2">
                   <button
                     onClick={handleSave}
                     disabled={saving}
-                    className="flex-1 py-2 text16 bg-black text-white hover:bg-gray-900 disabled:bg-gray-400"
+                    className={`flex-1 ${pageCtaPrimary} !min-h-[44px] !text-sm`}
                   >
                     {saving ? "Сохранение..." : "Сохранить"}
                   </button>
@@ -195,7 +203,7 @@ export default function AccountPage() {
                       setCurrentPassword("");
                       setNewPassword("");
                     }}
-                    className="flex-1 py-2 text16 border border-black bg-white hover:bg-gray-100"
+                    className={`flex-1 ${pageOutlineButton} !min-h-[44px] !text-sm`}
                   >
                     Отмена
                   </button>
@@ -204,88 +212,100 @@ export default function AccountPage() {
             ) : (
               <button
                 onClick={() => setEditing(true)}
-                className="w-full py-2 text16 bg-black text-white hover:bg-gray-900 mb-5"
+                className={`mb-5 ${pageCtaPrimary} !min-h-[44px] !text-sm`}
               >
-                Редактировать
+                Редактировать профиль
               </button>
             )}
 
-            <button
-              onClick={handleLogout}
-              className="w-full py-2 text16 border border-black bg-white hover:bg-gray-100"
-            >
+            <button onClick={handleLogout} className={pageOutlineButton}>
               Выйти
             </button>
+
+            <div className="mt-5 rounded-xl border border-neutral-200/90 bg-neutral-50/80 p-4 dark:border-neutral-700 dark:bg-neutral-900/40">
+              <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">
+                Баллы лояльности
+              </p>
+              <p className="mt-1 text-2xl font-bold text-neutral-900 dark:text-neutral-50">
+                {loyaltyPoints}
+              </p>
+            </div>
           </aside>
 
-          {/* Правая часть */}
-          <div className="lg:col-span-2 space-y-4">
-            {/* Баннер */}
-            <div className="h-48 bg-gradient-to-r from-neutral-900 via-neutral-800 to-neutral-700 border border-black/10 flex items-center px-8">
-              <div className="text-white">
-                <h2 className="text-2xl font-bold">Добро пожаловать в VogueWay</h2>
-                <p className="text-neutral-300 mt-1">Управляйте заказами и настройками аккаунта</p>
-              </div>
+          <div className="space-y-6 lg:col-span-2">
+            <div className="overflow-hidden rounded-2xl bg-gradient-to-br from-neutral-950 via-neutral-900 to-neutral-800 p-8 text-white shadow-lg">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.2em] text-white/60">
+                VogueWay
+              </p>
+              <h2 className="text-2xl font-bold tracking-tight">Добро пожаловать</h2>
+              <p className="mt-2 max-w-md text-sm text-neutral-300">
+                Ваши заказы, избранное и персональные настройки — всё в одном месте.
+              </p>
             </div>
 
-            {/* Заказы */}
-            <div className="border border-black/15 bg-white p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text20 font-semibold">Заказы</h2>
-                <Link href="/orders" className="text16 text-gray-500 hover:underline flex items-center gap-1">
-                  Все ›
+            <div className={pageSummaryCard}>
+              <div className="mb-4 flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Последние заказы</h2>
+                <Link
+                  href="/orders"
+                  className="text-sm text-neutral-500 transition hover:text-neutral-900 dark:hover:text-white"
+                >
+                  Все заказы →
                 </Link>
               </div>
               {recentOrders.length === 0 ? (
-                <p className="text16 text-gray-400 text-center py-6">Заказов пока нет</p>
+                <p className="py-6 text-center text-sm text-neutral-500">Заказов пока нет</p>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                   {recentOrders.map((order) => (
-                    <div key={order.id} className="border border-black/10 bg-[#f3f3f3] p-3">
-                      <p className="text16 font-semibold text-[#b5a97a]">
+                    <Link
+                      key={order.id}
+                      href="/orders"
+                      className="rounded-xl border border-neutral-200/80 bg-neutral-50/50 p-4 transition hover:border-neutral-300 dark:border-neutral-700 dark:bg-neutral-900/30 dark:hover:border-neutral-600"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-wide text-emerald-700 dark:text-emerald-400">
                         {STATUS_LABEL[order.status] ?? order.status}
                       </p>
-                      <p className="text16 text-gray-400 text-sm mt-0.5">
-                        {order.created_at ? new Date(order.created_at).toLocaleDateString("ru-RU") : ""}
+                      <p className="mt-1 text-xs text-neutral-500">
+                        {order.created_at
+                          ? new Date(order.created_at).toLocaleDateString("ru-RU")
+                          : ""}
                       </p>
-                      <p className="text16 mt-1 text-black">Заказ #{order.id} · {order.total_amount} ₽</p>
-                    </div>
+                      <p className="mt-2 text-sm font-semibold">
+                        #{order.id} · {formatPrice(order.total_amount)}
+                      </p>
+                    </Link>
                   ))}
                 </div>
               )}
             </div>
 
-            {/* Быстрые ссылки */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               {[
-                { label: "Избранное", href: "/wishlist", sub: "Ваши товары" },
-                { label: "Заказы", href: "/orders", sub: "Все заказы" },
+                { label: "Избранное", href: "/wishlist", sub: "Сохранённые товары" },
+                { label: "Заказы", href: "/orders", sub: "История покупок" },
                 { label: "FAQ", href: "/faq", sub: "Частые вопросы" },
               ].map((block) => (
                 <Link
                   key={block.label}
                   href={block.href}
-                  className="border border-black/15 bg-white p-4 flex flex-col justify-between min-h-[100px] hover:bg-gray-50 transition-colors"
+                  className="rounded-2xl border border-neutral-200/90 bg-white p-5 shadow-sm transition hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md dark:border-neutral-700 dark:bg-[var(--surface)] dark:hover:border-neutral-500"
                 >
-                  <p className="text16 font-semibold">{block.label}</p>
-                  <p className="text16 text-gray-400 text-sm">{block.sub}</p>
+                  <p className="font-semibold">{block.label}</p>
+                  <p className="mt-1 text-sm text-neutral-500">{block.sub}</p>
                 </Link>
               ))}
             </div>
 
-            {/* Сервис и помощь */}
-            <div className="border border-black/15 bg-white p-5">
-              <h2 className="text20 font-semibold mb-4">Сервис и помощь</h2>
-              <div className="grid grid-cols-2 gap-3">
-                <Link
-                  href="/faq"
-                  className="flex items-center justify-center py-2.5 text16 bg-black text-white hover:bg-gray-900"
-                >
+            <div className={pageSummaryCard}>
+              <h2 className="mb-4 text-lg font-semibold">Сервис и помощь</h2>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Link href="/faq" className={pageCtaPrimary}>
                   Частые вопросы
                 </Link>
                 <Link
                   href="/contacts"
-                  className="flex items-center justify-center py-2.5 text16 bg-black text-white hover:bg-gray-900"
+                  className={`${pageOutlineButton} text-center`}
                 >
                   Контакты
                 </Link>

@@ -1,0 +1,355 @@
+/**
+ * Глобальные правки тёмной темы для legacy-классов (bg-white, text-gray-* и т.д.).
+ * Подключено из globals.css при [data-theme="dark"].
+ */
+
+/* surface-elevated/muted/image-placeholder заданы в globals.css */
+
+/* Фоны */
+[data-theme="dark"] .bg-white,
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] .bg-neutral-100,
+[data-theme="dark"] .bg-neutral-200,
+[data-theme="dark"] .bg-\[\#f3f3f3\],
+[data-theme="dark"] .bg-\[\#f7f7f7\],
+[data-theme="dark"] .bg-\[\#fafafa\],
+[data-theme="dark"] .bg-\[\#d9d9d9\],
+[data-theme="dark"] .bg-\[\#cfcfcf\] {
+  background-color: var(--surface) !important;
+}
+
+[data-theme="dark"] .bg-white\/95,
+[data-theme="dark"] .bg-white\/45 {
+  background-color: color-mix(in srgb, var(--surface) 95%, transparent) !important;
+}
+
+[data-theme="dark"] .bg-\[\#f3f3f3\]\/95 {
+  background-color: color-mix(in srgb, var(--background) 95%, transparent) !important;
+}
+
+/* Текст */
+[data-theme="dark"] .text-black,
+[data-theme="dark"] .text-neutral-900,
+[data-theme="dark"] .text-neutral-800 {
+  color: var(--foreground) !important;
+}
+
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-neutral-400,
+[data-theme="dark"] .text-neutral-500,
+[data-theme="dark"] .text-neutral-600 {
+  color: var(--muted) !important;
+}
+
+[data-theme="dark"] .text-red-600 {
+  color: #f87171 !important;
+}
+
+/* Границы */
+[data-theme="dark"] .border-black,
+[data-theme="dark"] .border-black\/5,
+[data-theme="dark"] .border-black\/10,
+[data-theme="dark"] .border-black\/15,
+[data-theme="dark"] .border-black\/20,
+[data-theme="dark"] .border-black\/30,
+[data-theme="dark"] .border-neutral-200,
+[data-theme="dark"] .border-neutral-300,
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-300,
+[data-theme="dark"] .border-red-200,
+[data-theme="dark"] .border-red-400 {
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .border-red-400,
+[data-theme="dark"] .border-red-500 {
+  border-color: #f87171 !important;
+}
+
+/* Hover */
+@media (hover: hover) {
+  [data-theme="dark"] .hover\:bg-gray-50:hover,
+  [data-theme="dark"] .hover\:bg-gray-100:hover,
+  [data-theme="dark"] .hover\:bg-neutral-100:hover {
+    background-color: var(--surface-muted) !important;
+  }
+
+  [data-theme="dark"] .hover\:text-black:hover,
+  [data-theme="dark"] .hover\:text-neutral-900:hover {
+    color: var(--foreground) !important;
+  }
+
+  [data-theme="dark"] .hover\:bg-black:hover {
+    background-color: #e5e5e5 !important;
+  }
+
+  [data-theme="dark"] .hover\:bg-black\/90:hover,
+  [data-theme="dark"] .hover\:bg-gray-900:hover {
+    background-color: #d4d4d4 !important;
+  }
+
+  [data-theme="dark"] .hover\:underline:hover {
+    color: var(--foreground);
+  }
+}
+
+/* Кнопки CTA: инверсия чёрного */
+[data-theme="dark"] .bg-black.text-white,
+[data-theme="dark"] button.bg-black,
+[data-theme="dark"] a.bg-black {
+  background-color: #f5f5f5 !important;
+  color: #0f0f0f !important;
+}
+
+[data-theme="dark"] .bg-black.text-white .text-white,
+[data-theme="dark"] .bg-black .text-white {
+  color: #0f0f0f !important;
+}
+
+/* Бейдж корзины — оставляем контрастным */
+[data-theme="dark"] .rounded-full.bg-black.text-white.text-\[10px\],
+[data-theme="dark"] .rounded-full.bg-black.text-xs.text-white,
+[data-theme="dark"] span.rounded-full.bg-black.text-white {
+  background-color: #f5f5f5 !important;
+  color: #0f0f0f !important;
+}
+
+/* Поля ввода */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--muted) !important;
+}
+
+/* Скелетоны */
+[data-theme="dark"] .animate-pulse.bg-gray-200,
+[data-theme="dark"] .animate-pulse.bg-gray-300,
+[data-theme="dark"] .bg-gradient-to-r.from-gray-200 {
+  background-color: var(--surface-muted) !important;
+}
+
+/* Toast */
+[data-theme="dark"] .toast-success {
+  background: #064e3b !important;
+  border-color: #34d399 !important;
+  color: #a7f3d0 !important;
+}
+
+[data-theme="dark"] .toast-error {
+  background: #450a0a !important;
+  border-color: #f87171 !important;
+  color: #fecaca !important;
+}
+
+[data-theme="dark"] .toast-info {
+  background: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+/* Ошибки / алерты */
+[data-theme="dark"] .bg-red-50 {
+  background-color: #450a0a !important;
+}
+
+[data-theme="dark"] .border-red-200.bg-red-50 {
+  border-color: #7f1d1d !important;
+}
+
+/* Звёзды рейтинга */
+[data-theme="dark"] .text-amber-600 {
+  color: #fbbf24 !important;
+}
+
+[data-theme="dark"] .font-medium.text-gray-700 {
+  color: var(--muted) !important;
+}
+
+/* Лого / иконки на тёмном — без инверсии */
+
+/* Мини-корзина, drawer */
+[data-theme="dark"] aside.bg-white {
+  background-color: var(--surface) !important;
+}
+
+/* Футер ссылки */
+[data-theme="dark"] footer h3 {
+  color: var(--foreground);
+}
+
+[data-theme="dark"] footer .text-neutral-500,
+[data-theme="dark"] footer .text-neutral-400 {
+  color: var(--muted) !important;
+}
+
+[data-theme="dark"] footer a.rounded-full.bg-neutral-200 {
+  background-color: var(--surface-muted) !important;
+  color: var(--foreground) !important;
+}
+
+@media (hover: hover) {
+  [data-theme="dark"] footer a.rounded-full.bg-neutral-200:hover {
+    background-color: var(--foreground) !important;
+    color: var(--background) !important;
+  }
+}
+
+/* Фильтры: выбранный чип */
+[data-theme="dark"] .border-black.bg-black.text-white,
+[data-theme="dark"] .bg-black.text-white.shadow-sm {
+  background-color: #f5f5f5 !important;
+  color: #0f0f0f !important;
+  border-color: #f5f5f5 !important;
+}
+
+/* Неактивные outline-кнопки с белым фоном */
+[data-theme="dark"] .border.border-black.bg-white,
+[data-theme="dark"] .border-black.bg-white {
+  background-color: var(--surface) !important;
+  color: var(--foreground) !important;
+}
+
+/* Lightbox / overlay */
+[data-theme="dark"] .bg-black\/90 {
+  background-color: rgba(0, 0, 0, 0.92) !important;
+}
+
+[data-theme="dark"] .bg-black\/40,
+[data-theme="dark"] .bg-black\/35 {
+  background-color: rgba(0, 0, 0, 0.65) !important;
+}
+
+/* Checkout steps, borders between sections */
+[data-theme="dark"] .divide-black\/10 > * + * {
+  border-color: var(--border);
+}
+
+/* Дополнительные фоны */
+[data-theme="dark"] .bg-\[\#f9f9f9\],
+[data-theme="dark"] .bg-\[\#faf8ef\],
+[data-theme="dark"] .bg-white\/60,
+[data-theme="dark"] .bg-white\/90 {
+  background-color: color-mix(in srgb, var(--surface) 90%, transparent) !important;
+}
+
+[data-theme="dark"] .from-white,
+[data-theme="dark"] .to-neutral-100 {
+  --tw-gradient-from: var(--surface) var(--tw-gradient-from-position);
+  --tw-gradient-to: rgb(38 38 38 / 0) var(--tw-gradient-to-position);
+}
+
+[data-theme="dark"] .from-neutral-100,
+[data-theme="dark"] .to-neutral-200,
+[data-theme="dark"] .bg-gradient-to-br.from-neutral-100 {
+  background-color: var(--image-placeholder) !important;
+}
+
+[data-theme="dark"] .ring-neutral-200,
+[data-theme="dark"] .ring-1.ring-neutral-200 {
+  --tw-ring-color: var(--border) !important;
+}
+
+[data-theme="dark"] .border-neutral-200,
+[data-theme="dark"] .border-neutral-200\/90,
+[data-theme="dark"] .border-neutral-300,
+[data-theme="dark"] .border-dashed.border-neutral-300 {
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] .bg-gray-300,
+[data-theme="dark"] .disabled\:bg-gray-300:disabled {
+  background-color: #525252 !important;
+}
+
+[data-theme="dark"] .text-red-600 {
+  color: #fca5a5 !important;
+}
+
+[data-theme="dark"] .text-neutral-300 {
+  color: #d4d4d4 !important;
+}
+
+[data-theme="dark"] .text-neutral-50 {
+  color: #fafafa !important;
+}
+
+[data-theme="dark"] .shadow-sm,
+[data-theme="dark"] .shadow-md,
+[data-theme="dark"] .shadow-lg {
+  --tw-shadow-color: rgb(0 0 0 / 0.45);
+}
+
+[data-theme="dark"] .fixed.bottom-0.border-t,
+[data-theme="dark"] .fixed.bottom-0.left-0.right-0.z-30 {
+  background-color: color-mix(in srgb, var(--surface) 96%, transparent) !important;
+  border-color: var(--border) !important;
+}
+
+[data-theme="dark"] article.group.text-black,
+[data-theme="dark"] .catalog-grid-item {
+  color: var(--foreground);
+}
+
+[data-theme="dark"] .aspect-\[4\/5\].bg-gray-100,
+[data-theme="dark"] .relative.h-52.bg-neutral-200,
+[data-theme="dark"] .relative.h-40.bg-neutral-100,
+[data-theme="dark"] .relative.h-16.w-16.shrink-0.bg-\[\#d9d9d9\],
+[data-theme="dark"] .relative.w-20.h-20.bg-\[\#d9d9d9\] {
+  background-color: var(--image-placeholder) !important;
+}
+
+[data-theme="dark"] thead.bg-\[\#f9f9f9\],
+[data-theme="dark"] tr.border-b.bg-\[\#f9f9f9\] {
+  background-color: var(--surface-elevated) !important;
+}
+
+[data-theme="dark"] .hover\:border-neutral-300:hover {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+@media (hover: hover) {
+  [data-theme="dark"] .group-hover\:text-neutral-600:hover,
+  [data-theme="dark"] .group-hover\:text-neutral-700:hover {
+    color: var(--muted) !important;
+  }
+}
+
+/* Чекбокс «Сравнить» на карточке */
+[data-theme="dark"] label.rounded.bg-white\/90 {
+  background-color: color-mix(in srgb, var(--surface) 92%, transparent) !important;
+  color: var(--foreground) !important;
+}
+
+/* Мобильное меню шапки */
+[data-theme="dark"] .fixed.inset-y-0.left-0.bg-\[\#f3f3f3\] {
+  background-color: var(--surface) !important;
+}
+
+[data-theme="dark"] .inline-flex.min-h-11.border.border-black.bg-white {
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+  color: var(--foreground) !important;
+}
+
+[data-theme="dark"] .hover\:bg-gray-50:hover,
+[data-theme="dark"] .hover\:bg-gray-100:hover,
+[data-theme="dark"] .hover\:bg-neutral-100:hover {
+  background-color: var(--surface-muted) !important;
+}
+
+[data-theme="dark"] input,
+[data-theme="dark"] textarea,
+[data-theme="dark"] select {
+  color-scheme: dark;
+}

@@ -2,15 +2,34 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
-import Toast from "@/app/components/Toast";
+import EmptyState from "@/app/components/EmptyState";
+import { ScrollReveal } from "@/app/components/ScrollReveal";
+import { ProductPageSkeleton } from "@/app/components/ProductGridSkeleton";
 import WishlistHeart from "@/app/components/WishlistHeart";
+import StarRating from "@/app/components/StarRating";
+import SizeGuideModal from "@/app/components/SizeGuideModal";
 import { useCart } from "@/lib/CartContext";
+import { useToast } from "@/lib/ToastContext";
 import { useWishlist } from "@/lib/useWishlist";
 import { recordProductView } from "@/lib/recently-viewed";
+import { formatPrice } from "@/lib/format";
+import { publicImageSrc } from "@/lib/image-src";
+import {
+  pageBuyBox,
+  pageContent,
+  pageCtaPrimary,
+  pageGalleryMain,
+  pageProductCard,
+  pageProductImage,
+  pageShell,
+  pageTabActive,
+  pageTabIdle,
+} from "@/lib/page-classes";
+import { pageOutlineButton } from "@/lib/ui";
 
 interface BrandBrief {
   id: number;
@@ -25,21 +44,24 @@ interface CollectionBrief {
   slug: string;
 }
 
+interface ProductVariant {
+  size: string;
+  stock: number;
+}
+
 interface Product {
   id: number;
   name: string;
   description: string;
   price: number;
   image_url: string;
+  images: string[];
+  product_type: string;
   brand?: BrandBrief | null;
   collection?: CollectionBrief | null;
-}
-
-interface ProductListResponse {
-  items: Product[];
-  total: number;
-  limit: number;
-  offset: number;
+  avg_rating?: number | null;
+  review_count: number;
+  variants: ProductVariant[];
 }
 
 interface Review {
@@ -52,206 +74,14 @@ interface Review {
   created_at: string | null;
 }
 
-// Дополнительные изображения галереи по главному image_url товара.
-const EXTRA_IMAGES_BY_PRIMARY: Record<string, string[]> = {
-  "/images/celebrities/recrent/recrent-hoodie-black/recrent-hoodie-black.png": [
-    "/images/celebrities/recrent/recrent-hoodie-black/recrent-hoodie-black1.webp",
-    "/images/celebrities/recrent/recrent-hoodie-black/recrent-hoodie-black2.webp",
-  ],
-  "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white.png": [
-    "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white1.webp",
-    "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white2.webp",
-    "/images/celebrities/recrent/recrent-hoodie-white/recrent-hoodie-white3.webp",
-  ],
-  "/images/celebrities/recrent/recrent-necklace/recrent-necklace.png": [
-    "/images/celebrities/recrent/recrent-necklace/recrent-necklace1.webp",
-  ],
-  "/images/celebrities/recrent/recrent-sleeves-black/recrent-sleeves-black.png": [
-    "/images/celebrities/recrent/recrent-sleeves-black/recrent-sleeves-black1.webp",
-    "/images/celebrities/recrent/recrent-sleeves-black/recrent-sleeves-black2.webp",
-  ],
-  "/images/celebrities/recrent/recrent-sleeves-white/recrent-sleeves-white.png": [
-    "/images/celebrities/recrent/recrent-sleeves-white/recrent-sleeves-white1.webp",
-    "/images/celebrities/recrent/recrent-sleeves-white/recrent-sleeves-white2.webp",
-  ],
-  "/images/celebrities/recrent/recrent-tee-dragon-black/recrent-tee-dragon-black.png": [
-    "/images/celebrities/recrent/recrent-tee-dragon-black/recrent-tee-dragon-black1.webp",
-    "/images/celebrities/recrent/recrent-tee-dragon-black/recrent-tee-dragon-black2.webp",
-  ],
-  "/images/celebrities/recrent/recrent-tee-dragon-white/recrent-tee-dragon-white.png": [
-    "/images/celebrities/recrent/recrent-tee-dragon-white/recrent-tee-dragon-white1.webp",
-    "/images/celebrities/recrent/recrent-tee-dragon-white/recrent-tee-dragon-white2.webp",
-  ],
-  "/images/celebrities/recrent/recrent-tee-logo-black/recrent-tee-logo-black.png": [
-    "/images/celebrities/recrent/recrent-tee-logo-black/recrent-tee-logo-black1.webp",
-    "/images/celebrities/recrent/recrent-tee-logo-black/recrent-tee-logo-black2.webp",
-  ],
-  "/images/celebrities/recrent/recrent-tee-logo-white/recrent-tee-logo-white.png": [
-    "/images/celebrities/recrent/recrent-tee-logo-white/recrent-tee-logo-white1.webp",
-    "/images/celebrities/recrent/recrent-tee-logo-white/recrent-tee-logo-white2.webp",
-  ],
-  "/images/brands/adidas/Adidas Gazelle Indoor.webp": [
-    "/images/brands/adidas/Adidas Gazelle Indoor1.webp",
-    "/images/brands/adidas/Adidas Gazelle Indoor2.webp",
-    "/images/brands/adidas/Adidas Gazelle Indoor3.webp",
-    "/images/brands/adidas/Adidas Gazelle Indoor4.webp",
-  ],
-  "/images/brands/adidas/Adidas Adicolor Track Top.webp": [
-    "/images/brands/adidas/Adidas Adicolor Track Top1.webp",
-    "/images/brands/adidas/Adidas Adicolor Track Top2.webp",
-    "/images/brands/adidas/Adidas Adicolor Track Top3.webp",
-  ],
-  "/images/brands/adidas/Adidas Adicolor SST Pants.jpg": [
-    "/images/brands/adidas/Adidas Adicolor SST Pants1.jpg",
-    "/images/brands/adidas/Adidas Adicolor SST Pants2.jpg",
-    "/images/brands/adidas/Adidas Adicolor SST Pants3.jpg",
-    "/images/brands/adidas/Adidas Adicolor SST Pants 5.png",
-  ],
-  "/images/brands/adidas/Adidas Forum Low.webp": [
-    "/images/brands/adidas/Adidas Forum Low1.webp",
-    "/images/brands/adidas/Adidas Forum Low2.webp",
-    "/images/brands/adidas/Adidas Forum Low3.webp",
-  ],
-  "/images/brands/adidas/Adidas Racer TR23.webp": [
-    "/images/brands/adidas/Adidas Racer TR231.webp",
-    "/images/brands/adidas/Adidas Racer TR232.webp",
-    "/images/brands/adidas/Adidas Racer TR233.webp",
-    "/images/brands/adidas/Adidas Racer TR234.webp",
-  ],
-  "/images/brands/adidas/Adidas Classic Backpack.webp": [
-    "/images/brands/adidas/Adidas Classic Backpack1.webp",
-    "/images/brands/adidas/Adidas Classic Backpack2.webp",
-    "/images/brands/adidas/Adidas Classic Backpack3.webp",
-    "/images/brands/adidas/Adidas Classic Backpack4.webp",
-    "/images/brands/adidas/Adidas Classic Backpack5.webp",
-  ],
-  "/images/brands/adidas/Adidas Aeroready Cap.webp": [
-    "/images/brands/adidas/Adidas Aeroready Cap2.webp",
-    "/images/brands/adidas/Adidas Aeroready Cap3.webp",
-    "/images/brands/adidas/Adidas Aeroready Cap4.webp",
-  ],
-  "/images/brands/adidas/Adidas Essentials Fleece Hoodie.webp": [
-    "/images/brands/adidas/Adidas Essentials Fleece Hoodie1.webp",
-    "/images/brands/adidas/Adidas Essentials Fleece Hoodie2.webp",
-    "/images/brands/adidas/Adidas Essentials Fleece Hoodie3.webp",
-    "/images/brands/adidas/Adidas Essentials Fleece Hoodie4.webp",
-  ],
-  "/images/brands/adidas/Adidas Adilette Comfort.webp": [
-    "/images/brands/adidas/Adidas Adilette Comfort1.webp",
-    "/images/brands/adidas/Adidas Adilette Comfort2.webp",
-    "/images/brands/adidas/Adidas Adilette Comfort3.webp",
-    "/images/brands/adidas/Adidas Adilette Comfort4.webp",
-    "/images/brands/adidas/Adidas Adilette Comfort5.webp",
-  ],
-  "/images/brands/converse/Converse Chuck 701.webp": [
-    "/images/brands/converse/Converse Chuck 702.webp",
-    "/images/brands/converse/Converse Chuck 703.webp",
-    "/images/brands/converse/Converse Chuck 704.webp",
-    "/images/brands/converse/Converse Chuck 705.webp",
-  ],
-  "/images/brands/converse/Converse One Star Pro.webp": [
-    "/images/brands/converse/Converse One Star Pro2.webp",
-  ],
-  "/images/brands/converse/Converse Run Star Hike.webp": [
-    "/images/brands/converse/Converse Run Star Hike1.webp",
-    "/images/brands/converse/Converse Run Star Hike2.webp",
-    "/images/brands/converse/Converse Run Star Hike3.webp",
-  ],
-  "/images/brands/converse/Converse Graphic Hoodie.webp": [
-    "/images/brands/converse/Converse Graphic Hoodie1.webp",
-    "/images/brands/converse/Converse Graphic Hoodie2.webp",
-  ],
-  "/images/brands/converse/Converse Tote.webp": [
-    "/images/brands/converse/Converse Tote1.webp",
-    "/images/brands/converse/Converse Tote2.webp",
-  ],
-  "/images/brands/converse/Converse Beanie.webp": [
-    "/images/brands/converse/Converse Beanie1.webp",
-    "/images/brands/converse/Converse Beanie2.webp",
-  ],
-  "/images/brands/new_balance/New Balance 574 Core.webp": [
-    "/images/brands/new_balance/New Balance 574 Core1.webp",
-  ],
-  "/images/brands/new_balance/New Balance FuelCell Rebel v4.webp": [
-    "/images/brands/new_balance/New Balance FuelCell Rebel v41.webp",
-    "/images/brands/new_balance/New Balance FuelCell Rebel v42.webp",
-  ],
-  "/images/brands/new_balance/New Balance Impact Run Short.webp": [
-    "/images/brands/new_balance/New Balance Impact Run Short1.webp",
-    "/images/brands/new_balance/New Balance Impact Run Short2.webp",
-    "/images/brands/new_balance/New Balance Impact Run Short3.webp",
-  ],
-  "/images/brands/new_balance/New Balance Q Speed Jacquard Tee.webp": [
-    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee1.webp",
-    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee2.webp",
-    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee3.webp",
-    "/images/brands/new_balance/New Balance Q Speed Jacquard Tee4.webp",
-  ],
-  "/images/brands/new_balance/New Balance Heat Grid Half Zip.webp": [
-    "/images/brands/new_balance/New Balance Heat Grid Half Zip1.webp",
-    "/images/brands/new_balance/New Balance Heat Grid Half Zip2.webp",
-    "/images/brands/new_balance/New Balance Heat Grid Half Zip3.webp",
-  ],
-  "/images/brands/new_balance/New Balance Running Cap.webp": [
-    "/images/brands/new_balance/New Balance Running Cap1.webp",
-    "/images/brands/new_balance/New Balance Running Cap3.webp",
-    "/images/brands/new_balance/New Balance Running Cap4.webp",
-  ],
-  "/images/brands/new_balance/New Balance Essentials Backpack.webp": [
-    "/images/brands/new_balance/New Balance Essentials Backpack1.webp",
-    "/images/brands/new_balance/New Balance Essentials Backpack2.webp",
-    "/images/brands/new_balance/New Balance Essentials Backpack3.webp",
-  ],
-  "/images/brands/nike/Nike Air Zoom Pegasus 41.webp": [
-    "/images/brands/nike/Nike Air Zoom Pegasus 411.webp",
-    "/images/brands/nike/Nike Air Zoom Pegasus 412.webp",
-    "/images/brands/nike/Nike Air Zoom Pegasus 413.webp",
-    "/images/brands/nike/Nike Air Zoom Pegasus 414.webp",
-  ],
-  "/images/brands/nike/Nike Dri-FIT Miler Top.webp": [
-    "/images/brands/nike/Nike Dri-FIT Miler Top1.webp",
-    "/images/brands/nike/Nike Dri-FIT Miler Top2.webp",
-    "/images/brands/nike/Nike Dri-FIT Miler Top3.webp",
-  ],
-  "/images/brands/nike/Nike Challenger Shorts 7.webp": [
-    "/images/brands/nike/Nike Challenger Shorts 71.webp",
-    "/images/brands/nike/Nike Challenger Shorts 72.webp",
-    "/images/brands/nike/Nike Challenger Shorts 73.webp",
-    "/images/brands/nike/Nike Challenger Shorts 74.webp",
-  ],
-  "/images/brands/nike/Nike Club Fleece Hoodie.webp": [
-    "/images/brands/nike/Nike Club Fleece Hoodie1.webp",
-    "/images/brands/nike/Nike Club Fleece Hoodie2.webp",
-    "/images/brands/nike/Nike Club Fleece Hoodie3.webp",
-  ],
-  "/images/brands/nike/Nike Brasilia Duffel.webp": [
-    "/images/brands/nike/Nike Brasilia Duffel1.webp",
-    "/images/brands/nike/Nike Brasilia Duffel2.webp",
-    "/images/brands/nike/Nike Brasilia Duffel3.webp",
-  ],
-  "/images/brands/nike/Nike Charge Backpack.webp": [
-    "/images/brands/nike/Nike Charge Backpack1.webp",
-    "/images/brands/nike/Nike Charge Backpack2.webp",
-    "/images/brands/nike/Nike Charge Backpack3.webp",
-    "/images/brands/nike/Nike Charge Backpack4.webp",
-    "/images/brands/nike/Nike Charge Backpack5.webp",
-  ],
-  "/images/celebrities/billie-eilish/Billie Tour Tote.webp": [
-    "/images/celebrities/billie-eilish/Billie Tour Tote1.webp",
-    "/images/celebrities/billie-eilish/Billie Tour Tote2.webp",
-    "/images/celebrities/billie-eilish/Billie Tour Tote3.webp",
-  ],
-};
-
-function getProductImages(imageUrl: string): string[] {
-  const extras = EXTRA_IMAGES_BY_PRIMARY[imageUrl] ?? [];
-  return [imageUrl, ...extras];
-}
-
-const SIZES = ["XS", "S", "M", "L", "XL", "XXL"];
-const SHOE_SIZES = ["36", "37", "38", "39", "40", "41", "42", "43", "44", "45"];
-
 type TabKey = "about" | "brand" | "reviews";
+
+function productGallery(product: Product): string[] {
+  const fromApi = (product.images ?? []).filter(Boolean);
+  if (fromApi.length > 0) return fromApi;
+  if (product.image_url) return [product.image_url];
+  return [];
+}
 
 export default function ProductPage() {
   const params = useParams<{ id: string }>();
@@ -259,49 +89,76 @@ export default function ProductPage() {
   const [similar, setSimilar] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
-  const [cartMessage, setCartMessage] = useState("");
-  const [cartMessageType, setCartMessageType] = useState<"success" | "error">("success");
   const [lightbox, setLightbox] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<TabKey>("about");
   const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [sizePickerOpen, setSizePickerOpen] = useState(false);
+  const [sizeGuideOpen, setSizeGuideOpen] = useState(false);
+  const [galleryIndex, setGalleryIndex] = useState(0);
+  const [galleryFade, setGalleryFade] = useState(true);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewText, setReviewText] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
-  const { refreshCart } = useCart();
+  const { refreshCart, bumpCart } = useCart();
+  const { showToast } = useToast();
   const { ids: wishlistIds, toggle: toggleWishlist } = useWishlist();
+
+  const isShoes = product?.product_type === "shoes";
+  const hasVariants = (product?.variants?.length ?? 0) > 0;
+
+  const galleryImages = useMemo(
+    () => (product ? productGallery(product) : []),
+    [product]
+  );
 
   const closeLightbox = useCallback(() => setLightbox(null), []);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") closeLightbox(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") closeLightbox();
+    };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [closeLightbox]);
+
+  const reloadProduct = useCallback(async (id: string) => {
+    const res = await fetch(apiUrl(`/products/${id}`));
+    if (res.ok) setProduct(await res.json());
+  }, []);
 
   useEffect(() => {
     const load = async () => {
       setLoading(true);
       try {
-        const [productRes, allRes] = await Promise.all([
+        const [productRes, similarRes] = await Promise.all([
           fetch(apiUrl(`/products/${params.id}`)),
-          fetch(apiUrl("/products?limit=50&offset=0")),
+          fetch(apiUrl(`/products/${params.id}/similar?limit=6`)),
         ]);
         if (productRes.ok) setProduct(await productRes.json());
-        if (allRes.ok) {
-          const payload: ProductListResponse = await allRes.json();
-          const all = payload.items;
-          setSimilar(all.filter((p) => p.id !== Number(params.id)).slice(0, 6));
-        }
+        if (similarRes.ok) setSimilar(await similarRes.json());
       } catch (err) {
         console.error("Product page fetch error:", err);
       } finally {
         setLoading(false);
       }
     };
-    load();
+    void load();
   }, [params.id]);
+
+  useEffect(() => {
+    setGalleryIndex(0);
+    setSelectedSize(null);
+  }, [product?.id]);
+
+  const selectGalleryImage = (index: number) => {
+    if (index === galleryIndex) return;
+    setGalleryFade(false);
+    window.setTimeout(() => {
+      setGalleryIndex(index);
+      setGalleryFade(true);
+    }, 120);
+  };
 
   useEffect(() => {
     if (!product) return;
@@ -310,29 +167,32 @@ export default function ProductPage() {
       name: product.name,
       price: product.price,
       image_url: product.image_url ?? null,
+      brand_slug: product.brand?.slug ?? null,
     });
   }, [product]);
 
   useEffect(() => {
     if (!product) return;
     fetch(apiUrl(`/products/${product.id}/reviews`))
-      .then(r => r.json())
-      .then(data => setReviews(data))
-      .catch(() => {});
+      .then((r) => r.json())
+      .then((data) => setReviews(Array.isArray(data) ? data : []))
+      .catch(() => setReviews([]));
   }, [product]);
 
   const submitReview = async () => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setCartMessage("Войдите, чтобы оставить отзыв");
-      setCartMessageType("error");
+      showToast("Войдите, чтобы оставить отзыв", "error");
       return;
     }
     setReviewSubmitting(true);
     try {
       const res = await apiFetch(apiUrl(`/products/${product!.id}/reviews`), {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ rating: reviewRating, text: reviewText || null }),
       });
       if (res.ok) {
@@ -340,49 +200,63 @@ export default function ProductPage() {
         setReviews([newReview, ...reviews]);
         setReviewText("");
         setReviewRating(5);
-        setCartMessage("Отзыв добавлен");
-        setCartMessageType("success");
+        showToast("Отзыв добавлен", "success");
+        await reloadProduct(String(product!.id));
       } else {
         const data = await res.json();
-        setCartMessage(data.detail || "Не удалось добавить отзыв");
-        setCartMessageType("error");
+        showToast(data.detail || "Не удалось добавить отзыв", "error");
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
-        setCartMessage("Сессия истекла");
-        setCartMessageType("error");
+        showToast("Сессия истекла", "error");
       }
     } finally {
       setReviewSubmitting(false);
     }
   };
 
-  const addToCart = async (id: number) => {
+  const addToCart = async (id: number, size?: string | null) => {
+    const sizeToUse = size ?? selectedSize;
+    if (hasVariants && !sizeToUse) {
+      showToast("Выберите размер перед добавлением в корзину", "error");
+      setSizePickerOpen(true);
+      return;
+    }
     const token = localStorage.getItem("token");
     if (!token) {
-      setCartMessage("Войдите в аккаунт, чтобы добавить товар в корзину");
-      setCartMessageType("error");
+      showToast("Войдите в аккаунт, чтобы добавить товар в корзину", "error");
       return;
     }
     setAdding(true);
+    bumpCart(1);
     try {
       const res = await apiFetch(apiUrl("/cart/add"), {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ product_id: id, quantity: 1 }),
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          product_id: id,
+          quantity: 1,
+          size: sizeToUse || undefined,
+        }),
       });
       if (res.ok) {
-        setCartMessage("Товар добавлен в корзину");
-        setCartMessageType("success");
-        refreshCart();
+        showToast("Товар добавлен в корзину", "success");
+        void refreshCart();
       } else {
-        setCartMessage("Не удалось добавить товар");
-        setCartMessageType("error");
+        bumpCart(-1);
+        const data = await res.json().catch(() => ({}));
+        showToast(
+          typeof data.detail === "string" ? data.detail : "Не удалось добавить товар",
+          "error"
+        );
       }
     } catch (err: unknown) {
+      bumpCart(-1);
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
-        setCartMessage("Сессия истекла, войдите снова");
-        setCartMessageType("error");
+        showToast("Сессия истекла, войдите снова", "error");
       }
     } finally {
       setAdding(false);
@@ -393,7 +267,7 @@ export default function ProductPage() {
     if (!product) return;
     const shareData = {
       title: product.name,
-      text: `${product.name} — ${product.price} ₽`,
+      text: `${product.name} — ${formatPrice(product.price)}`,
       url: typeof window !== "undefined" ? window.location.href : "",
     };
     try {
@@ -401,84 +275,113 @@ export default function ProductPage() {
         await navigator.share(shareData);
       } else if (navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareData.url);
-        setCartMessage("Ссылка скопирована");
-        setCartMessageType("success");
+        showToast("Ссылка скопирована", "success");
       }
     } catch {
-      // Пользователь мог отменить диалог share — это нормальное поведение.
+      /* user cancelled share */
     }
   };
 
-  if (loading) return <div className="container-main py-10 text20">Загрузка товара...</div>;
+  if (loading) return <ProductPageSkeleton />;
 
-  if (!product) return (
-    <div className="container-main py-10">
-      <h1 className="h32 mb-4">Товар не найден</h1>
-      <Link href="/catalog" className="text20 underline">Вернуться в каталог</Link>
-    </div>
-  );
+  if (!product) {
+    return (
+      <div className={pageShell}>
+        <div className={`${pageContent} pt-8 sm:pt-10`}>
+          <EmptyState
+            icon="?"
+            title="Товар не найден"
+            description="Возможно, товар снят с продажи или ссылка устарела."
+            actionLabel="В каталог"
+            actionHref="/catalog"
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const activeSrc = galleryImages[galleryIndex] ?? galleryImages[0];
 
   return (
     <>
-      <div className="min-h-screen py-4 sm:py-8">
-        <div className="container-main text-black">
+      <div className={`${pageShell} py-4 pb-24 sm:py-8 sm:pb-8`}>
+        <div className={pageContent}>
+          <Breadcrumbs
+            items={[{ label: "Каталог", href: "/catalog" }, { label: product.name }]}
+          />
 
-          {cartMessage && (
-            <div className="mb-4">
-              <Toast message={cartMessage} type={cartMessageType} />
-            </div>
-          )}
-
-          <Breadcrumbs items={[
-            { label: "Каталог", href: "/catalog" },
-            { label: product.name },
-          ]} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-10">
+          <div className="mb-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
             <section className="lg:col-span-2">
-              {(() => {
-                const imgs = getProductImages(product.image_url);
-                const [main, ...rest] = imgs;
-                return (
-                  <>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-                      <div onClick={() => setLightbox(main)} className="relative h-[min(72vw,380px)] sm:h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
-                        <Image src={main} alt={product.name} fill unoptimized sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" />
-                      </div>
-                      <div onClick={() => setLightbox(rest[0] ?? main)} className="relative h-[min(72vw,380px)] sm:h-[380px] bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
-                        <Image src={rest[0] ?? main} alt={product.name} fill unoptimized sizes="(max-width: 640px) 100vw, 50vw" className="object-cover" />
-                      </div>
+              {activeSrc && (
+                <>
+                  <div
+                    onClick={() => setLightbox(activeSrc)}
+                    className={pageGalleryMain}
+                  >
+                    <Image
+                      key={activeSrc}
+                      src={publicImageSrc(activeSrc)}
+                      alt={product.name}
+                      fill
+                      unoptimized
+                      sizes="(max-width: 1024px) 100vw, 66vw"
+                      className={`gallery-main-image object-cover ${galleryFade ? "opacity-100" : "opacity-0"}`}
+                    />
+                  </div>
+                  {galleryImages.length > 1 && (
+                    <div className="flex gap-2 overflow-x-auto pb-1">
+                      {galleryImages.map((src, i) => (
+                        <button
+                          key={`${src}-${i}`}
+                          type="button"
+                          onClick={() => selectGalleryImage(i)}
+                          className={`relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border-2 transition sm:h-20 sm:w-20 ${
+                            i === galleryIndex
+                              ? "border-black dark:border-white"
+                              : "border-black/15 opacity-80 hover:opacity-100 dark:border-white/20"
+                          }`}
+                          aria-label={`Фото ${i + 1}`}
+                          aria-current={i === galleryIndex}
+                        >
+                          <Image
+                            src={publicImageSrc(src)}
+                            alt=""
+                            fill
+                            unoptimized
+                            className="object-cover"
+                          />
+                        </button>
+                      ))}
                     </div>
-                    {rest.length > 1 && (
-                      <div className="mt-3 grid grid-cols-2 gap-3 sm:mt-4 sm:grid-cols-3 sm:gap-4">
-                        {rest.slice(1).map((src, i) => (
-                          <div key={i} onClick={() => setLightbox(src)} className="relative h-28 sm:h-40 bg-[#d9d9d9] border border-black/10 cursor-zoom-in">
-                            <Image src={src} alt={product.name} fill unoptimized className="object-cover" />
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </>
-                );
-              })()}
+                  )}
+                </>
+              )}
             </section>
 
-            <aside className="h-fit border border-black/20 bg-[#f3f3f3] p-4 sm:p-5">
+            <aside className={pageBuyBox}>
               <div className="mb-2 flex items-start justify-between gap-3">
-                <p className="text16 text-gray-500">Бренд/знаменитость</p>
+                <p className="text16 text-gray-500 dark:text-gray-400">Бренд/знаменитость</p>
                 <WishlistHeart
                   saved={wishlistIds.has(product.id)}
                   onToggle={() =>
                     void toggleWishlist(product.id, () => {
-                      setCartMessage("Войдите, чтобы сохранять избранное");
-                      setCartMessageType("error");
+                      showToast("Войдите, чтобы сохранять избранное", "error");
                     })
                   }
                 />
               </div>
-              <h1 className="h32 mb-4 sm:mb-6">{product.name}</h1>
+              <h1 className="mb-2 text-2xl font-bold tracking-tight sm:mb-3 sm:text-3xl">{product.name}</h1>
+              {product.avg_rating != null && product.review_count > 0 && (
+                <div className="mb-3">
+                  <StarRating
+                    rating={product.avg_rating}
+                    count={product.review_count}
+                    size="md"
+                  />
+                </div>
+              )}
               {product.brand && (
-                <p className="text16 text-gray-600 mb-2">
+                <p className="text16 mb-2 text-gray-600">
                   {product.brand.is_celebrity ? "Знаменитость" : "Бренд"}:{" "}
                   <Link
                     href={
@@ -493,7 +396,7 @@ export default function ProductPage() {
                 </p>
               )}
               {product.collection && (
-                <p className="text16 text-gray-600 mb-4">
+                <p className="text16 mb-4 text-gray-600">
                   Коллекция:{" "}
                   <Link
                     href={`/collections/${product.collection.slug}`}
@@ -503,128 +406,155 @@ export default function ProductPage() {
                   </Link>
                 </p>
               )}
-              <p className="h32 mb-6 text-black">{product.price} ₽</p>
-              <button
-                type="button"
-                onClick={() => setSizePickerOpen(!sizePickerOpen)}
-                className="w-full text16 border border-black py-2 bg-white mb-1 flex items-center justify-between px-3"
-              >
-                <span>{selectedSize ? `Размер: ${selectedSize}` : "Выбрать размер"}</span>
-                <svg width="12" height="12" viewBox="0 0 12 12" className={`transition-transform ${sizePickerOpen ? "rotate-180" : ""}`}>
-                  <path d="M2 4l4 4 4-4" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
-                </svg>
-              </button>
-              {sizePickerOpen && (
-                <div className="border border-black/15 bg-white p-3 mb-3">
-                  <div className="flex flex-wrap gap-2">
-                    {(product.name.toLowerCase().includes("кроссовки") ||
-                      product.name.toLowerCase().includes("shoes") ||
-                      product.name.toLowerCase().includes("sneaker") ||
-                      product.name.toLowerCase().includes("слайды") ||
-                      product.name.toLowerCase().includes("gazelle") ||
-                      product.name.toLowerCase().includes("forum") ||
-                      product.name.toLowerCase().includes("racer") ||
-                      product.name.toLowerCase().includes("pegasus") ||
-                      product.name.toLowerCase().includes("chuck") ||
-                      product.name.toLowerCase().includes("run star") ||
-                      product.name.toLowerCase().includes("one star") ||
-                      product.name.toLowerCase().includes("574") ||
-                      product.name.toLowerCase().includes("fuelcell") ||
-                      product.name.toLowerCase().includes("adilette")
-                      ? SHOE_SIZES : SIZES
-                    ).map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        onClick={() => { setSelectedSize(size); setSizePickerOpen(false); }}
-                        className={`px-3 py-1.5 text16 border transition ${
-                          selectedSize === size
-                            ? "border-black bg-black text-white"
-                            : "border-black/30 bg-white hover:bg-gray-100"
-                        }`}
-                      >
-                        {size}
-                      </button>
-                    ))}
+              <p className="mb-4 text-3xl font-bold tracking-tight text-neutral-900 dark:text-white sm:mb-6">
+                {formatPrice(product.price)}
+              </p>
+
+              {hasVariants && (
+                <>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <span className="text16 text-gray-600">Размер</span>
+                    <button
+                      type="button"
+                      onClick={() => setSizeGuideOpen(true)}
+                      className="text14 text-gray-600 underline hover:text-black"
+                    >
+                      Таблица размеров
+                    </button>
                   </div>
-                </div>
+                  <button
+                    type="button"
+                    onClick={() => setSizePickerOpen(!sizePickerOpen)}
+                    className="mb-1 flex w-full items-center justify-between border border-black bg-white px-3 py-2 text16"
+                  >
+                    <span>
+                      {selectedSize ? `Размер: ${selectedSize}` : "Выбрать размер"}
+                    </span>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 12 12"
+                      className={`transition-transform ${sizePickerOpen ? "rotate-180" : ""}`}
+                    >
+                      <path
+                        d="M2 4l4 4 4-4"
+                        stroke="currentColor"
+                        strokeWidth="1.5"
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                    </svg>
+                  </button>
+                  {sizePickerOpen && (
+                    <div className="mb-3 border border-black/15 bg-white p-3">
+                      <div className="flex flex-wrap gap-2">
+                        {product.variants.map((v) => {
+                          const out = v.stock <= 0;
+                          return (
+                            <button
+                              key={v.size}
+                              type="button"
+                              disabled={out}
+                              onClick={() => {
+                                if (out) return;
+                                setSelectedSize(v.size);
+                                setSizePickerOpen(false);
+                              }}
+                              className={`px-3 py-1.5 text16 border transition ${
+                                out
+                                  ? "cursor-not-allowed border-gray-200 bg-gray-100 text-gray-400 line-through"
+                                  : selectedSize === v.size
+                                    ? "border-black bg-black text-white"
+                                    : "border-black/30 bg-white hover:bg-gray-100"
+                              }`}
+                              title={out ? "Нет в наличии" : `${v.stock} шт.`}
+                            >
+                              {v.size}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
-              {!sizePickerOpen && <div className="mb-3" />}
+
               <button
                 type="button"
-                onClick={() => addToCart(product.id)}
+                onClick={() => void addToCart(product.id)}
                 disabled={adding}
-                className={`w-full py-3 text24 border border-black ${adding ? "bg-gray-300" : "bg-black text-white hover:bg-gray-900"}`}
+                aria-busy={adding}
+                className={`${pageCtaPrimary} ${adding ? "opacity-80" : ""}`}
               >
                 {adding ? "Добавляем..." : "В корзину"}
               </button>
               <button
                 type="button"
                 onClick={() => void shareProduct()}
-                className="w-full mt-3 py-2 text16 border border-black bg-white hover:bg-gray-100 inline-flex items-center justify-center gap-2"
+                className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-full border border-neutral-300 bg-white py-2.5 text16 transition hover:bg-neutral-50 dark:border-neutral-600 dark:bg-neutral-800 dark:hover:bg-neutral-700"
               >
                 <Image src="/share-icon.png" alt="Поделиться" width={16} height={16} />
                 <span>Поделиться</span>
               </button>
-              <p className="text20 mt-6">Доставка в г.Москва</p>
+              <p className="text20 mt-6">Доставка в г. Москва</p>
             </aside>
           </div>
 
           <section className="mb-10">
-            <div role="tablist" aria-label="Информация о товаре" className="flex gap-0 border-b border-black/15 mb-6">
-              {([
-                { key: "about" as TabKey, label: "О товаре" },
-                { key: "brand" as TabKey, label: "О бренде" },
-                { key: "reviews" as TabKey, label: "Отзывы" },
-              ]).map((tab) => (
+            <div
+              role="tablist"
+              aria-label="Информация о товаре"
+              className="mb-6 flex gap-1 border-b border-neutral-200 dark:border-neutral-700"
+            >
+              {(
+                [
+                  { key: "about" as TabKey, label: "О товаре" },
+                  { key: "brand" as TabKey, label: "О бренде" },
+                  {
+                    key: "reviews" as TabKey,
+                    label: `Отзывы${product.review_count ? ` (${product.review_count})` : ""}`,
+                  },
+                ] as const
+              ).map((tab) => (
                 <button
                   key={tab.key}
                   type="button"
                   role="tab"
                   aria-selected={activeTab === tab.key}
-                  aria-controls={`tabpanel-${tab.key}`}
-                  id={`tab-${tab.key}`}
                   onClick={() => setActiveTab(tab.key)}
-                  className={`px-6 py-3 text20 font-semibold transition-colors relative ${
-                    activeTab === tab.key
-                      ? "text-black"
-                      : "text-gray-500 hover:text-gray-700"
+                  className={`px-5 py-3 text-base transition-colors sm:px-6 sm:text-lg ${
+                    activeTab === tab.key ? pageTabActive : pageTabIdle
                   }`}
                 >
                   {tab.label}
-                  {activeTab === tab.key && (
-                    <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-black" />
-                  )}
                 </button>
               ))}
             </div>
 
             {activeTab === "about" && (
-              <div role="tabpanel" id="tabpanel-about" aria-labelledby="tab-about" className="max-w-4xl space-y-4">
-                <p className="text20">{product.description || "Описание товара будет добавлено продавцом."}</p>
-                {product.collection && (
-                  <p className="text16 text-gray-600">
-                    Коллекция:{" "}
-                    <Link href={`/collections/${product.collection.slug}`} className="underline">
-                      {product.collection.name}
-                    </Link>
-                  </p>
-                )}
+              <div className="max-w-4xl space-y-4">
+                <p className="text20">
+                  {product.description || "Описание товара будет добавлено продавцом."}
+                </p>
               </div>
             )}
 
             {activeTab === "brand" && (
-              <div role="tabpanel" id="tabpanel-brand" aria-labelledby="tab-brand" className="max-w-4xl space-y-4">
+              <div className="max-w-4xl space-y-4">
                 {product.brand ? (
                   <>
                     <h3 className="text20 font-semibold">{product.brand.name}</h3>
                     <p className="text16 text-gray-600">
                       {product.brand.is_celebrity
-                        ? `${product.brand.name} — знаменитость с эксклюзивными коллекциями и мерчем на VogueWay.`
-                        : `${product.brand.name} — один из ведущих брендов, представленных на VogueWay.`}
+                        ? `${product.brand.name} — знаменитость с эксклюзивными коллекциями на VogueWay.`
+                        : `${product.brand.name} — бренд на VogueWay.`}
                     </p>
                     <Link
-                      href={product.brand.is_celebrity ? `/celebrities/${product.brand.slug}` : `/brands/${product.brand.slug}`}
+                      href={
+                        product.brand.is_celebrity
+                          ? `/celebrities/${product.brand.slug}`
+                          : `/brands/${product.brand.slug}`
+                      }
                       className="inline-block text16 underline"
                     >
                       Все товары {product.brand.name} →
@@ -637,11 +567,17 @@ export default function ProductPage() {
             )}
 
             {activeTab === "reviews" && (
-              <div role="tabpanel" id="tabpanel-reviews" aria-labelledby="tab-reviews" className="max-w-4xl space-y-6">
-                {/* Review form */}
-                <div className="border border-black/15 bg-white p-5">
-                  <h3 className="text20 font-semibold mb-3">Оставить отзыв</h3>
-                  <div className="flex items-center gap-1 mb-3">
+              <div className="max-w-4xl space-y-6">
+                {product.avg_rating != null && product.review_count > 0 && (
+                  <StarRating
+                    rating={product.avg_rating}
+                    count={product.review_count}
+                    size="md"
+                  />
+                )}
+                <div className="border border-black/15 bg-white p-5 dark:border-white/15 dark:bg-[var(--surface)]">
+                  <h3 className="text20 mb-3 font-semibold">Оставить отзыв</h3>
+                  <div className="mb-3 flex items-center gap-1">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         key={star}
@@ -653,45 +589,52 @@ export default function ProductPage() {
                         ★
                       </button>
                     ))}
-                    <span className="text16 text-gray-500 ml-2">{reviewRating}/5</span>
+                    <span className="text16 ml-2 text-gray-500">{reviewRating}/5</span>
                   </div>
                   <textarea
                     value={reviewText}
                     onChange={(e) => setReviewText(e.target.value)}
                     placeholder="Напишите ваш отзыв (необязательно)"
                     rows={3}
-                    className="w-full border border-black/20 p-3 text16 bg-[#fafafa] resize-y mb-3"
+                    className="text16 mb-3 w-full resize-y border border-black/20 bg-[#fafafa] p-3 dark:border-white/20 dark:bg-neutral-900 dark:text-[var(--foreground)]"
                   />
                   <button
                     type="button"
-                    onClick={submitReview}
+                    onClick={() => void submitReview()}
                     disabled={reviewSubmitting}
-                    className={`px-6 py-2 text16 border border-black ${reviewSubmitting ? "bg-gray-300" : "bg-black text-white hover:bg-gray-900"}`}
+                    className={`text16 border border-black px-6 py-2 ${
+                      reviewSubmitting ? "bg-gray-300" : "bg-black text-white hover:bg-gray-900"
+                    }`}
                   >
                     {reviewSubmitting ? "Отправка..." : "Отправить отзыв"}
                   </button>
                 </div>
 
-                {/* Reviews list */}
                 {reviews.length === 0 ? (
-                  <div className="border border-dashed border-black/15 bg-white/60 rounded-xl px-6 py-10 text-center">
-                    <p className="text20 text-gray-400 mb-2">Отзывов пока нет</p>
-                    <p className="text16 text-gray-400">Будьте первым, кто оставит отзыв на этот товар.</p>
+                  <div className="rounded-xl border border-dashed border-black/15 bg-white/60 px-6 py-10 text-center dark:border-white/15 dark:bg-neutral-900/50">
+                    <p className="text20 mb-2 text-gray-400">Отзывов пока нет</p>
+                    <p className="text16 text-gray-400">Будьте первым!</p>
                   </div>
                 ) : (
                   <div className="space-y-4">
                     {reviews.map((review) => (
-                      <div key={review.id} className="border border-black/15 bg-white p-4">
-                        <div className="flex items-center justify-between mb-2">
+                      <div key={review.id} className="border border-black/15 bg-white p-4 dark:border-white/15 dark:bg-[var(--surface)]">
+                        <div className="mb-2 flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            <span className="text16 font-semibold">{review.user_name || "Пользователь"}</span>
-                            <span className="text-yellow-500">{"★".repeat(review.rating)}{"☆".repeat(5 - review.rating)}</span>
+                            <span className="text16 font-semibold">
+                              {review.user_name || "Пользователь"}
+                            </span>
+                            <StarRating rating={review.rating} size="sm" />
                           </div>
                           <span className="text14 text-gray-400">
-                            {review.created_at ? new Date(review.created_at).toLocaleDateString("ru-RU") : ""}
+                            {review.created_at
+                              ? new Date(review.created_at).toLocaleDateString("ru-RU")
+                              : ""}
                           </span>
                         </div>
-                        {review.text && <p className="text16 text-gray-700">{review.text}</p>}
+                        {review.text && (
+                          <p className="text16 text-gray-700">{review.text}</p>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -701,61 +644,94 @@ export default function ProductPage() {
           </section>
 
           {similar.length > 0 && (
-            <section>
-              <h2 className="h32 mb-5">Похожие</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-                {similar.map((item) => (
-                  <article key={item.id} className="bg-[#f3f3f3] border border-black/15 flex flex-col">
-                    <div className="relative h-44 bg-[#d9d9d9]">
-                      <Link href={`/product/${item.id}`} className="block absolute inset-0">
-                        <Image src={item.image_url} alt={item.name} fill unoptimized className="object-cover" />
-                      </Link>
-                      <div className="absolute top-1.5 right-1.5 z-10">
-                        <WishlistHeart
-                          size="sm"
-                          saved={wishlistIds.has(item.id)}
-                          onToggle={() =>
-                            void toggleWishlist(item.id, () => {
-                              setCartMessage("Войдите, чтобы сохранять избранное");
-                              setCartMessageType("error");
-                            })
-                          }
-                        />
+            <ScrollReveal>
+              <section>
+                <h2 className="mb-5 text-xl font-bold tracking-tight sm:text-2xl">Похожие товары</h2>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                  {similar.map((item) => (
+                    <article key={item.id} className={`${pageProductCard} flex flex-col`}>
+                      <div className={`${pageProductImage} h-44`}>
+                        <Link href={`/product/${item.id}`} className="absolute inset-0 block">
+                          <Image
+                            src={publicImageSrc(item.image_url)}
+                            alt={item.name}
+                            fill
+                            unoptimized
+                            className="object-cover transition duration-300 group-hover:scale-105"
+                          />
+                        </Link>
+                        <div className="absolute right-1.5 top-1.5 z-10">
+                          <WishlistHeart
+                            size="sm"
+                            saved={wishlistIds.has(item.id)}
+                            onToggle={() =>
+                              void toggleWishlist(item.id, () => {
+                                showToast("Войдите, чтобы сохранять избранное", "error");
+                              })
+                            }
+                          />
+                        </div>
                       </div>
-                    </div>
-                    <div className="p-3 flex flex-col flex-1">
-                      <p className="text16 font-semibold line-clamp-2 min-h-[44px] mb-1">{item.name}</p>
-                      <p className="text16 text-black flex-1 mb-2">{item.price} ₽</p>
-                      <button
-                        type="button"
-                        onClick={() => addToCart(item.id)}
-                        className="w-full border border-black py-1.5 text16 bg-white hover:bg-gray-100 mt-auto"
-                      >
-                        В корзину
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            </section>
+                      <div className="flex flex-1 flex-col p-3">
+                        <p className="mb-1 line-clamp-2 min-h-[40px] text-sm font-semibold">{item.name}</p>
+                        <p className="mb-2 flex-1 text-sm font-bold">{formatPrice(item.price)}</p>
+                        <Link
+                          href={`/product/${item.id}`}
+                          className={`mt-auto text-center ${pageOutlineButton} !min-h-[36px] !text-xs`}
+                        >
+                          Подробнее
+                        </Link>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            </ScrollReveal>
           )}
         </div>
       </div>
 
+      <div className="fixed bottom-0 left-0 right-0 z-30 flex items-center gap-3 border-t border-black/15 bg-white/95 p-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] backdrop-blur-sm dark:border-white/15 dark:bg-[var(--surface)]/95 dark:shadow-[0_-4px_20px_rgba(0,0,0,0.35)] lg:hidden">
+        <p className="shrink-0 text18 font-bold">{formatPrice(product.price)}</p>
+        <button
+          type="button"
+          onClick={() => void addToCart(product.id)}
+          disabled={adding}
+          className={`min-h-11 flex-1 rounded-full py-2.5 text16 font-semibold transition active:scale-[0.98] ${
+            adding ? "bg-neutral-400 dark:bg-neutral-600" : "bg-neutral-950 text-white dark:bg-white dark:text-neutral-950"
+          }`}
+        >
+          {adding ? "Добавляем..." : "В корзину"}
+        </button>
+      </div>
+
+      <SizeGuideModal
+        open={sizeGuideOpen}
+        onClose={() => setSizeGuideOpen(false)}
+        isShoes={isShoes}
+      />
+
       {lightbox && (
         <div
           onClick={closeLightbox}
-          className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center cursor-zoom-out"
+          className="fixed inset-0 z-50 flex cursor-zoom-out items-center justify-center bg-black/90"
         >
           <button
+            type="button"
             onClick={closeLightbox}
-            className="absolute top-4 right-6 text-white text-4xl leading-none hover:opacity-70"
+            className="absolute right-6 top-4 text-4xl leading-none text-white hover:opacity-70"
             aria-label="Закрыть"
           >
             ×
           </button>
-          <div className="relative w-full h-full max-w-4xl max-h-[90vh] mx-4">
-            <Image src={lightbox} alt="Просмотр" fill unoptimized className="object-contain" />
+          <div className="relative mx-4 h-full max-h-[90vh] w-full max-w-4xl">
+            <Image
+              src={publicImageSrc(lightbox)}
+              alt="Просмотр"
+              fill
+              unoptimized
+              className="object-contain"
+            />
           </div>
         </div>
       )}

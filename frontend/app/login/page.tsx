@@ -4,6 +4,10 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { apiUrl } from "@/lib/api";
+import { uiForm } from "@/lib/ui";
+import { pageCtaPrimary } from "@/lib/page-classes";
+import { AuthPageSkeleton } from "@/app/components/ProductGridSkeleton";
+import { AuthSplitLayout } from "@/app/components/AuthSplitLayout";
 
 function LoginForm() {
   const router = useRouter();
@@ -33,8 +37,7 @@ function LoginForm() {
       } else {
         setMessage(data.detail || "Ошибка входа");
       }
-    } catch (error) {
-      console.error("Login error:", error);
+    } catch {
       setMessage("Ошибка соединения с сервером");
     } finally {
       setLoading(false);
@@ -42,72 +45,78 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen py-10">
-      <div className="container-main">
-        <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 border border-black/30">
-          <div className="min-h-[420px] bg-gradient-to-br from-neutral-900 via-neutral-800 to-neutral-700 flex flex-col items-center justify-center p-8 text-white">
-            <h2 className="text-3xl font-bold tracking-tight mb-3">VogueWay</h2>
-            <p className="text-neutral-300 text-center max-w-xs">Мода и стиль в одном месте. Войдите, чтобы продолжить покупки.</p>
+    <AuthSplitLayout
+      title="С возвращением"
+      subtitle="Мода и стиль в одном месте. Войдите, чтобы продолжить покупки и отслеживать заказы."
+    >
+      <form onSubmit={handleLogin} className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
+          Вход
+        </h1>
+
+        {sessionExpired && (
+          <div className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950/40 dark:text-amber-200">
+            Сессия истекла — войдите снова
           </div>
-          <form onSubmit={handleLogin} className="p-8 bg-[#f3f3f3] flex flex-col gap-4 text-black">
-            <h1 className="h32 text-center">Вход</h1>
+        )}
 
-            {sessionExpired && (
-              <div className="bg-yellow-100 border border-yellow-400 text-yellow-800 px-4 py-2 text16 text-center">
-                Сессия истекла, войдите снова
-              </div>
-            )}
-
-            <label className="text20 mt-2">Почта</label>
-            <input
-              type="email"
-              className="border-b border-black bg-transparent p-2 outline-none text20"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-
-            <label className="text20 mt-2">Пароль</label>
-            <input
-              type="password"
-              className="border-b border-black bg-transparent p-2 outline-none text20"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-
-            <Link href="/forgot-password" className="text16 text-gray-500 hover:underline self-end">
-              Забыли пароль?
-            </Link>
-
-            <button
-              type="submit"
-              disabled={loading}
-              className={`mt-4 py-3 text20 ${loading ? "bg-gray-400 text-white" : "bg-[var(--accent-soft)] hover:brightness-95"}`}
-            >
-              {loading ? "Вход..." : "Войти"}
-            </button>
-
-            {message && (
-              <p className={`mt-2 text-center text16 ${message.includes("выполнен") ? "text-green-700" : "text-red-700"}`}>
-                {message}
-              </p>
-            )}
-
-            <p className="text-center text16 mt-2">
-              Нет аккаунта?{" "}
-              <Link href="/register" className="underline">Зарегистрироваться</Link>
-            </p>
-          </form>
+        <div>
+          <label className={uiForm.label}>Почта</label>
+          <input
+            type="email"
+            className={uiForm.input}
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
         </div>
-      </div>
-    </div>
+
+        <div>
+          <label className={uiForm.label}>Пароль</label>
+          <input
+            type="password"
+            className={uiForm.input}
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+
+        <Link
+          href="/forgot-password"
+          className="self-end text-sm text-neutral-500 transition hover:text-neutral-900 dark:hover:text-white"
+        >
+          Забыли пароль?
+        </Link>
+
+        <button type="submit" disabled={loading} className={pageCtaPrimary}>
+          {loading ? "Вход..." : "Войти"}
+        </button>
+
+        {message && (
+          <p
+            className={`text-center text-sm ${
+              message.includes("выполнен") ? "text-green-600" : "text-red-600"
+            }`}
+          >
+            {message}
+          </p>
+        )}
+
+        <p className="text-center text-sm text-neutral-600 dark:text-neutral-400">
+          Нет аккаунта?{" "}
+          <Link href="/register" className="font-semibold text-neutral-900 underline dark:text-neutral-200">
+            Зарегистрироваться
+          </Link>
+        </p>
+      </form>
+    </AuthSplitLayout>
   );
 }
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={<div>Загрузка...</div>}>
+    <Suspense fallback={<AuthPageSkeleton label="Загрузка" />}>
       <LoginForm />
     </Suspense>
   );

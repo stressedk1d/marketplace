@@ -18,6 +18,11 @@ export interface CollectionBrief {
   slug: string;
 }
 
+export interface ProductVariant {
+  size: string;
+  stock: number;
+}
+
 export interface Product {
   id: number;
   name: string;
@@ -29,10 +34,14 @@ export interface Product {
   category_id?: number | null;
   brand?: BrandBrief | null;
   collection?: CollectionBrief | null;
+  avg_rating?: number | null;
+  review_count?: number;
+  variants?: ProductVariant[];
 }
 
 export interface FacetBrand {
   slug: string;
+  name?: string;
   count: number;
   selected: boolean;
 }
@@ -72,6 +81,8 @@ export interface CatalogFilters {
   max_price: string;
   collection_id: string;
   sort: ProductSort;
+  in_stock_only: boolean;
+  min_rating: string;
 }
 
 export interface CatalogParams extends CatalogFilters {

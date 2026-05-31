@@ -25,7 +25,7 @@ export default function WishlistHeart({
         e.stopPropagation();
         onToggle();
       }}
-      className={`${dim} leading-none p-1.5 rounded-full bg-white/90 border border-black/10 shadow-sm hover:bg-white transition disabled:opacity-50`}
+      className={`${dim} leading-none rounded-full border border-black/10 bg-white/90 p-1.5 shadow-sm transition hover:scale-110 hover:bg-white active:scale-95 disabled:opacity-50 ${saved ? "scale-110" : ""}`}
     >
       {saved ? "❤️" : "♡"}
     </button>

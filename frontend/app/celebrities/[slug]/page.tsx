@@ -6,9 +6,21 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
-import Toast from "@/app/components/Toast";
+import EmptyState from "@/app/components/EmptyState";
+import { PageHero } from "@/app/components/PageHero";
+import ProductGridSkeleton from "@/app/components/ProductGridSkeleton";
 import { useCart } from "@/lib/CartContext";
+import { useToast } from "@/lib/ToastContext";
 import type { CatalogBrand } from "@/lib/catalog-types";
+import { formatPrice } from "@/lib/format";
+import { publicImageSrc } from "@/lib/image-src";
+import {
+  pageContent,
+  pageProductCard,
+  pageProductImage,
+  pageShell,
+} from "@/lib/page-classes";
+import { pageOutlineButton } from "@/lib/ui";
 
 interface Product {
   id: number;
@@ -26,18 +38,17 @@ interface ProductListResponse {
 }
 
 const FALLBACK_DESCRIPTION =
-  "Коллекции и мерч на маркетплейсе VogueWay (демо).";
+  "Коллекции и мерч на маркетплейсе VogueWay — эксклюзивные дропы и лимитированные серии.";
 
 export default function CelebrityDetailPage() {
   const params = useParams<{ slug: string }>();
   const router = useRouter();
-  const { refreshCart } = useCart();
+  const { refreshCart, bumpCart } = useCart();
 
   const [meta, setMeta] = useState<CatalogBrand | null>(null);
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [toast, setToast] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
+  const { showToast } = useToast();
 
   const slug = Array.isArray(params?.slug) ? params.slug[0] : (params?.slug ?? "");
 
@@ -63,17 +74,14 @@ export default function CelebrityDetailPage() {
         setMeta(found);
 
         const pr = await fetch(
-          apiUrl(
-            `/products?brand_slug=${encodeURIComponent(slug)}&limit=50&offset=0`
-          )
+          apiUrl(`/products?brand_slug=${encodeURIComponent(slug)}&limit=50&offset=0`)
         );
         const data: ProductListResponse = await pr.json();
         if (cancelled) return;
         setProducts(Array.isArray(data.items) ? data.items : []);
       } catch {
         if (!cancelled) {
-          setToast("Ошибка загрузки. Проверьте соединение.");
-          setToastType("error");
+          showToast("Ошибка загрузки. Проверьте соединение.", "error");
         }
       } finally {
         if (!cancelled) setLoading(false);
@@ -83,15 +91,15 @@ export default function CelebrityDetailPage() {
     return () => {
       cancelled = true;
     };
-  }, [slug, router]);
+  }, [slug, router, showToast]);
 
   const addToCart = async (productId: number) => {
     const token = localStorage.getItem("token");
     if (!token) {
-      setToast("Войдите в аккаунт");
-      setToastType("error");
+      showToast("Войдите в аккаунт", "error");
       return;
     }
+    bumpCart(1);
     try {
       const res = await apiFetch(apiUrl("/cart/add"), {
         method: "POST",
@@ -102,9 +110,10 @@ export default function CelebrityDetailPage() {
         body: JSON.stringify({ product_id: productId, quantity: 1 }),
       });
       if (res.ok) {
-        setToast("Товар добавлен в корзину");
-        setToastType("success");
-        refreshCart();
+        showToast("Товар добавлен в корзину", "success");
+        void refreshCart();
+      } else {
+        bumpCart(-1);
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
@@ -117,85 +126,74 @@ export default function CelebrityDetailPage() {
   if (!loading && !meta) return null;
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
-        {toast && (
-          <div className="mb-4">
-            <Toast message={toast} type={toastType} />
-          </div>
-        )}
-
-        <Breadcrumbs items={[
-          { label: "Знаменитости", href: "/celebrities" },
-          { label: meta?.name ?? slug },
-        ]} />
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
+        <Breadcrumbs
+          items={[
+            { label: "Знаменитости", href: "/celebrities" },
+            { label: meta?.name ?? slug },
+          ]}
+        />
 
         {meta && (
-          <div className="mb-10 flex items-center gap-6 border border-black/10 bg-[#f3f3f3] p-6">
-            <div className="relative h-24 w-24 shrink-0 overflow-hidden border border-black/10 bg-[#d9d9d9]">
-              {meta.logo_url ? (
-                <Image
-                  src={meta.logo_url}
-                  alt={meta.name}
-                  fill
-                  unoptimized
-                  className="object-cover"
-                />
-              ) : (
-                <span className="absolute inset-0 flex items-center justify-center text-2xl font-bold text-gray-400">
-                  {meta.name.slice(0, 1)}
-                </span>
-              )}
-            </div>
-            <div>
-              <h1 className="h32 mb-1">{meta.name}</h1>
-              <p className="text16 text-gray-500">{FALLBACK_DESCRIPTION}</p>
-              <Link
-                href="/celebrities"
-                className="mt-1 inline-block text16 text-gray-400 hover:underline"
-              >
-                ← Все знаменитости
-              </Link>
-            </div>
-          </div>
+          <PageHero
+            eyebrow="Celebrity"
+            title={meta.name}
+            description={FALLBACK_DESCRIPTION}
+            variant="dark"
+          >
+            <Link
+              href="/celebrities"
+              className="inline-flex items-center rounded-full border border-white/25 px-4 py-2 text-sm text-white/90 transition hover:bg-white/10"
+            >
+              ← Все знаменитости
+            </Link>
+          </PageHero>
         )}
 
         {loading ? (
-          <p className="text-center text20">Загрузка...</p>
+          <ProductGridSkeleton
+            count={4}
+            columns="grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+            label="Загрузка товаров"
+          />
         ) : products.length === 0 ? (
-          <p className="text-center text20 text-gray-500">Товары не найдены</p>
+          <EmptyState
+            icon="★"
+            title="Товары не найдены"
+            description="Коллекция пока пуста — загляните позже или перейдите в каталог."
+            actionLabel="В каталог"
+            actionHref="/catalog"
+          />
         ) : (
-          <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:gap-6 lg:grid-cols-3 xl:grid-cols-4">
             {products.map((product) => (
-              <article
-                key={product.id}
-                className="flex flex-col overflow-hidden border border-black/10 bg-[#d9d9d9] text-black"
-              >
+              <article key={product.id} className={`${pageProductCard} flex flex-col`}>
                 <Link href={`/product/${product.id}`} className="block">
-                  <div className="relative h-64 w-full bg-[#cfcfcf]">
+                  <div className={`${pageProductImage} aspect-[4/5] w-full overflow-hidden`}>
                     <Image
-                      src={product.image_url}
+                      src={publicImageSrc(product.image_url)}
                       alt={product.name}
                       fill
                       unoptimized
-                      className="object-cover"
+                      className="object-cover transition duration-300 group-hover:scale-105"
                     />
                   </div>
                 </Link>
-                <div className="flex flex-1 flex-col bg-[#f3f3f3] p-4">
-                  <p className="mb-1 text16 text-black">{product.price} ₽</p>
-                  <Link href={`/product/${product.id}`} className="mb-1 block">
-                    <h2 className="line-clamp-2 min-h-[44px] text16 font-semibold hover:underline">
+                <div className="flex flex-1 flex-col p-3 sm:p-4">
+                  <p className="mb-1 text-sm font-bold">{formatPrice(product.price)}</p>
+                  <Link href={`/product/${product.id}`} className="mb-2 block">
+                    <h2 className="line-clamp-2 min-h-[40px] text-sm font-semibold transition group-hover:underline">
                       {product.name}
                     </h2>
                   </Link>
-                  <p className="mb-4 line-clamp-2 flex-1 text16 text-gray-500">
+                  <p className="mb-3 line-clamp-2 flex-1 text-xs text-neutral-500 dark:text-neutral-400">
                     {product.description}
                   </p>
                   <button
                     type="button"
                     onClick={() => addToCart(product.id)}
-                    className="mt-auto w-full border border-black bg-white py-2 text16 transition hover:bg-gray-100"
+                    className={`mt-auto ${pageOutlineButton} !min-h-[36px] !text-xs`}
                   >
                     В корзину
                   </button>

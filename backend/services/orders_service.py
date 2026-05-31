@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session, joinedload
 import models
 from models import OrderStatus
 from schemas import CheckoutResponse, OrderItemResponse, OrderResponse
-from services import email_service
+from services import email_service, promo_service
 
 _ALLOWED_TRANSITIONS: frozenset[tuple[OrderStatus, OrderStatus]] = frozenset(
     {
@@ -39,6 +39,9 @@ def _order_to_response(order: models.Order) -> OrderResponse:
         id=order.id,
         status=_as_order_status(order.status),
         total_amount=order.total_amount,
+        discount_amount=float(order.discount_amount or 0),
+        promo_code=order.promo_code,
+        comment=order.comment,
         created_at=order.created_at.isoformat() if order.created_at else None,
         items=[
             OrderItemResponse(
@@ -48,13 +51,19 @@ def _order_to_response(order: models.Order) -> OrderResponse:
                 image_url=i.product.image_url if i.product else None,
                 quantity=i.quantity,
                 price_at_purchase=i.price_at_purchase,
+                size=i.size or "",
             )
             for i in order.items
         ],
     )
 
 
-def checkout(user_id: int, db: Session) -> CheckoutResponse:
+def checkout(
+    user_id: int,
+    db: Session,
+    promo_code: str | None = None,
+    delivery_comment: str | None = None,
+) -> CheckoutResponse:
     cart_items = (
         db.query(models.CartItem)
         .options(joinedload(models.CartItem.product))
@@ -65,22 +74,51 @@ def checkout(user_id: int, db: Session) -> CheckoutResponse:
     if not cart_items:
         raise HTTPException(status_code=400, detail="Корзина пуста")
 
-    total_amount = sum(item.product.price * item.quantity for item in cart_items)
+    subtotal = sum(item.product.price * item.quantity for item in cart_items)
+    discount, applied_code = promo_service.calc_discount(db, promo_code, subtotal)
+    total_amount = round(subtotal - discount, 2)
+
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    points_earned = int(total_amount * 0.01) if user else 0
+    if user and points_earned > 0:
+        user.loyalty_points = int(user.loyalty_points or 0) + points_earned
+
     order = models.Order(
         user_id=user_id,
         status=OrderStatus.created,
         total_amount=total_amount,
+        promo_code=applied_code,
+        discount_amount=discount,
+        comment=delivery_comment,
     )
     db.add(order)
     db.flush()
 
     for item in cart_items:
+        size_label = item.size or ""
+        if size_label:
+            variant = (
+                db.query(models.ProductVariant)
+                .filter(
+                    models.ProductVariant.product_id == item.product_id,
+                    models.ProductVariant.size == size_label,
+                )
+                .first()
+            )
+            if not variant or variant.stock < item.quantity:
+                raise HTTPException(
+                    status_code=400,
+                    detail=f"Недостаточно товара (размер {size_label})",
+                )
+            variant.stock -= item.quantity
+
         db.add(
             models.OrderItem(
                 order_id=order.id,
                 product_id=item.product_id,
                 quantity=item.quantity,
                 price_at_purchase=item.product.price,
+                size=size_label,
             )
         )
 
@@ -96,6 +134,9 @@ def checkout(user_id: int, db: Session) -> CheckoutResponse:
         order_id=order.id,
         status=_as_order_status(order.status),
         total_amount=order.total_amount,
+        discount_amount=float(order.discount_amount or 0),
+        promo_code=order.promo_code,
+        loyalty_points_earned=points_earned,
         items_count=len(cart_items),
     )
 
@@ -119,8 +160,20 @@ def _notify_order_created(order: models.Order, db: Session) -> None:
         name = item.product.name if item.product else f"Товар #{item.product_id}"
         items_for_email.append((name, item.quantity, float(item.price_at_purchase)))
 
+    subject = f"VogueWay — заказ №{order_with_items.id} оформлен"
+    body_lines = [
+        f"Заказ №{order_with_items.id}",
+        f"Сумма: {order_with_items.total_amount:,.2f} ₽".replace(",", " "),
+    ]
+    if order_with_items.comment:
+        body_lines.append(f"Доставка: {order_with_items.comment[:500]}")
+    for name, qty, price in items_for_email:
+        body_lines.append(f"• {name} — {qty} × {price:,.0f} ₽".replace(",", " "))
+    body_preview = "\n".join(body_lines)[:2000]
+
+    sent = False
     try:
-        email_service.send_order_confirmation_email(
+        sent = email_service.send_order_confirmation_email(
             to_email=user.email,
             full_name=user.full_name,
             order_id=order_with_items.id,
@@ -129,6 +182,17 @@ def _notify_order_created(order: models.Order, db: Session) -> None:
         )
     except Exception:
         pass
+
+    db.add(
+        models.EmailLog(
+            order_id=order_with_items.id,
+            to_email=user.email,
+            subject=subject,
+            body_preview=body_preview,
+            sent=bool(sent),
+        )
+    )
+    db.commit()
 
 
 def get_user_orders(user_id: int, db: Session) -> list[OrderResponse]:

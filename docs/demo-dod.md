@@ -38,7 +38,7 @@
 
 ## 5) Demo readiness
 
-- [ ] Demo script (5-7 min) validated end-to-end once.
+- [ ] Demo script (5-7 min) validated end-to-end once — см. [docs/demo-script.ru.md](demo-script.ru.md)
 - [ ] One fallback path prepared (if AI search fails, use standard catalog flow).
 - [ ] Known limitations are documented and non-blocking.
 - [ ] Seed DB snapshot/source for demo is fixed and reproducible.

@@ -1,28 +1,33 @@
 import Link from "next/link";
+import { AuthSplitLayout } from "@/app/components/AuthSplitLayout";
+import { pageCtaPrimary } from "@/lib/page-classes";
 
 export default function ForgotPasswordPage() {
   return (
-    <div className="min-h-screen py-10">
-      <div className="container-main">
-        <div className="max-w-xl mx-auto border border-black/30 bg-[#f3f3f3] p-8 text-black">
-          <h1 className="h32 text-center mb-6">Восстановление пароля</h1>
-
-          <p className="text20 text-center mb-4">
-            Для восстановления пароля обратитесь в поддержку по email:
-          </p>
-
-          <p className="text20 font-semibold text-center mb-8">
-            support@vogueway.ru
-          </p>
-
-          <Link
-            href="/login"
-            className="block text-center text16 text-gray-500 hover:underline"
-          >
-            ← Вернуться ко входу
-          </Link>
-        </div>
+    <AuthSplitLayout
+      title="Восстановление доступа"
+      subtitle="Мы поможем вернуть доступ к аккаунту — напишите в поддержку, и команда ответит в течение рабочего дня."
+    >
+      <div className="flex flex-col gap-4">
+        <h1 className="text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
+          Забыли пароль?
+        </h1>
+        <p className="text-sm text-neutral-600 dark:text-neutral-400">
+          Отправьте письмо на адрес поддержки с email, указанным при регистрации.
+        </p>
+        <a
+          href="mailto:support@vogueway.ru"
+          className={`${pageCtaPrimary} text-center`}
+        >
+          support@vogueway.ru
+        </a>
+        <Link
+          href="/login"
+          className="text-center text-sm text-neutral-500 transition hover:text-neutral-900 dark:hover:text-white"
+        >
+          ← Вернуться ко входу
+        </Link>
       </div>
-    </div>
+    </AuthSplitLayout>
   );
 }

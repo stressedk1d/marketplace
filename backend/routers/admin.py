@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, File, Query, UploadFile
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -11,12 +11,15 @@ from schemas import (
     AdminProductUpdate,
     AdminStatsResponse,
     AdminUserResponse,
+    AdminAnalyticsResponse,
     MaintenanceStatusResponse,
     MaintenanceUpdateRequest,
+    EmailLogResponse,
     MessageResponse,
     OrderResponse,
     OrderStatusUpdate,
     ProductResponse,
+    ReviewResponse,
 )
 from services import admin_service, maintenance_service, orders_service
 
@@ -38,6 +41,15 @@ def admin_stats(
     _: User = Depends(get_current_admin),
 ) -> AdminStatsResponse:
     return admin_service.get_stats(db)
+
+
+@router.get("/analytics", response_model=AdminAnalyticsResponse)
+def admin_analytics(
+    days: int = Query(7, ge=1, le=30),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> AdminAnalyticsResponse:
+    return admin_service.get_analytics(db, days=days)
 
 
 @router.get("/orders", response_model=list[AdminOrderResponse])
@@ -118,3 +130,44 @@ def admin_delete_product(
 ) -> MessageResponse:
     admin_service.delete_product(product_id, db)
     return MessageResponse(message="Товар удалён")
+
+
+@router.get("/reviews", response_model=list[ReviewResponse])
+def admin_list_reviews(
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> list[ReviewResponse]:
+    return admin_service.list_reviews(db, limit=limit, offset=offset)
+
+
+@router.delete("/reviews/{review_id}", response_model=MessageResponse)
+def admin_delete_review(
+    review_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> MessageResponse:
+    admin_service.delete_review(db, review_id)
+    return MessageResponse(message="Отзыв удалён")
+
+
+@router.get("/email-logs", response_model=list[EmailLogResponse])
+def admin_email_logs(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin),
+) -> list[EmailLogResponse]:
+    return admin_service.list_email_logs(db)
+
+
+@router.post("/upload-image")
+async def admin_upload_image(
+    file: UploadFile = File(...),
+    _: User = Depends(get_current_admin),
+) -> dict:
+    data = await file.read()
+    if len(data) > 5 * 1024 * 1024:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Файл больше 5 МБ")
+    url = admin_service.save_uploaded_image(data, file.filename or "image.jpg")
+    return {"url": url}

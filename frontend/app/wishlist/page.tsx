@@ -6,10 +6,23 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
-import Toast from "@/app/components/Toast";
+import ProductGridSkeleton from "@/app/components/ProductGridSkeleton";
+import EmptyState from "@/app/components/EmptyState";
+import { PageHero } from "@/app/components/PageHero";
 import { useCart } from "@/lib/CartContext";
+import { useToast } from "@/lib/ToastContext";
 import WishlistHeart from "@/app/components/WishlistHeart";
 import { useWishlist } from "@/lib/useWishlist";
+import { formatPrice } from "@/lib/format";
+import { publicImageSrc } from "@/lib/image-src";
+import {
+  pageContent,
+  pageCtaPrimary,
+  pageProductCard,
+  pageProductImage,
+  pageShell,
+} from "@/lib/page-classes";
+import { pageOutlineButton } from "@/lib/ui";
 
 interface Product {
   id: number;
@@ -24,11 +37,10 @@ export default function WishlistPage() {
   const router = useRouter();
   const { refresh: refreshWishlistIds } = useWishlist();
   const { refreshCart } = useCart();
+  const { showToast } = useToast();
   const [items, setItems] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [authMissing, setAuthMissing] = useState(false);
-  const [toast, setToast] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
 
   const loadItems = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -47,20 +59,18 @@ export default function WishlistPage() {
       if (res.ok) {
         setItems(await res.json());
       } else {
-        setToast("Не удалось загрузить избранное");
-        setToastType("error");
+        showToast("Не удалось загрузить избранное", "error");
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
         router.push("/login?reason=session_expired");
       } else {
-        setToast("Ошибка сети");
-        setToastType("error");
+        showToast("Ошибка сети", "error");
       }
     } finally {
       setLoading(false);
     }
-  }, [router]);
+  }, [router, showToast]);
 
   useEffect(() => {
     void loadItems();
@@ -78,121 +88,136 @@ export default function WishlistPage() {
       });
       if (res.ok) {
         void refreshWishlistIds();
+        showToast("Убрано из избранного", "info");
       } else {
         setItems(snapshot);
-        setToast("Не удалось убрать из избранного");
-        setToastType("error");
+        showToast("Не удалось убрать из избранного", "error");
       }
     } catch {
       setItems(snapshot);
-      setToast("Ошибка сети");
-      setToastType("error");
+      showToast("Ошибка сети", "error");
     }
   };
 
   const addToCart = async (productId: number) => {
     const token = localStorage.getItem("token");
-    if (!token) { router.push("/login"); return; }
+    if (!token) {
+      router.push("/login");
+      return;
+    }
     try {
       await apiFetch(apiUrl("/cart/add"), {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ product_id: productId, quantity: 1 }),
       });
       refreshCart();
-      setToast("Товар добавлен в корзину");
-      setToastType("success");
-    } catch {}
+      showToast("Товар добавлен в корзину", "success");
+    } catch {
+      showToast("Не удалось добавить в корзину", "error");
+    }
   };
 
   if (loading) {
     return (
-      <div className="text-center mt-10 text20">Загрузка избранного...</div>
+      <ProductGridSkeleton
+        count={4}
+        columns="grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4"
+        label="Загрузка избранного"
+      />
     );
   }
 
   if (authMissing) {
     return (
-      <div className="min-h-screen py-8">
-        <div className="container-main max-w-3xl bg-white p-8 border border-black/20 text-center">
-          <h1 className="h32 mb-3">Избранное</h1>
-          <p className="text20 mb-4">Войдите, чтобы видеть сохранённые товары.</p>
-          <Link href="/login" className="text20 underline">
-            Перейти ко входу
-          </Link>
+      <div className={pageShell}>
+        <div className={`${pageContent} pt-8 sm:pt-10`}>
+          <PageHero
+            eyebrow="Wishlist"
+            title="Избранное"
+            description="Войдите в аккаунт — сохранённые товары будут доступны на любом устройстве."
+            variant="light"
+          />
+          <div className="mx-auto max-w-md rounded-2xl border border-neutral-200/90 bg-white p-8 text-center shadow-lg dark:border-neutral-700 dark:bg-[var(--surface)]">
+            <Link href="/login" className={pageCtaPrimary}>
+              Войти в аккаунт
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
         <Breadcrumbs items={[{ label: "Избранное" }]} />
-        <h1 className="h32 mb-2">Избранное</h1>
-        <p className="text16 text-gray-600 mb-6 inline-flex items-center gap-2">
-          <Image src="/favorites-icon.png" alt="Избранное" width={16} height={16} />
-          <span>Товары, которые вы отметили на карточках в каталоге.</span>
-        </p>
 
-        {toast && (
-          <div className="mb-4">
-            <Toast message={toast} type={toastType} />
-          </div>
-        )}
+        <PageHero
+          eyebrow="Wishlist"
+          title="Избранное"
+          description={
+            items.length > 0
+              ? `${items.length} ${items.length === 1 ? "товар" : items.length < 5 ? "товара" : "товаров"} — нажмите сердечко на карточке, чтобы убрать.`
+              : "Сохраняйте понравившиеся вещи — нажмите сердечко на карточке в каталоге."
+          }
+          variant="light"
+        />
 
         {items.length === 0 ? (
-          <div className="bg-white p-8 border border-black/20 text-center">
-            <p className="text20 mb-4">Пока пусто.</p>
-            <Link href="/catalog" className="text20 underline">
-              В каталог
-            </Link>
-          </div>
+          <EmptyState
+            icon="♡"
+            title="Пока пусто"
+            description="Сохраняйте понравившиеся товары — нажмите сердечко на карточке в каталоге."
+            actionLabel="Перейти в каталог"
+            actionHref="/catalog"
+          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
             {items.map((product) => (
-              <article
-                key={product.id}
-                className="bg-[#d9d9d9] border border-black/10 overflow-hidden flex flex-col"
-              >
-                <div className="relative w-full h-64 bg-[#cfcfcf]">
-                  <Link href={`/product/${product.id}`} className="block absolute inset-0">
+              <article key={product.id} className={pageProductCard}>
+                <div className={`${pageProductImage} h-64`}>
+                  <Link href={`/product/${product.id}`} className="absolute inset-0 block">
                     {product.image_url && (
                       <Image
-                        src={product.image_url}
+                        src={publicImageSrc(product.image_url)}
                         alt={product.name}
                         fill
                         unoptimized
-                        className="object-cover"
+                        sizes="(max-width: 640px) 100vw, 25vw"
+                        className="object-cover transition duration-300 group-hover:scale-105"
                       />
                     )}
                   </Link>
-                  <div className="absolute top-2 right-2 z-10">
-                    <button
-                      type="button"
-                      onClick={() => void removeItem(product.id)}
-                      aria-label="Удалить из избранного"
-                      className="w-8 h-8 rounded-full bg-white/90 border border-black/15 flex items-center justify-center hover:bg-white"
-                    >
-                      <Image src="/delete-icon.png" alt="Удалить" width={14} height={14} />
-                    </button>
+                  <div className="absolute right-2 top-2 z-10">
+                    <WishlistHeart
+                      saved
+                      onToggle={() => void removeItem(product.id)}
+                      size="sm"
+                    />
                   </div>
                 </div>
-                <div className="p-4 bg-[#f3f3f3] flex flex-col flex-1">
-                  <p className="text16 text-black mb-1">{product.price} ₽</p>
-                  <Link href={`/product/${product.id}`} className="block mb-1">
-                    <h2 className="text16 font-semibold hover:underline line-clamp-2 min-h-[44px]">
+                <div className="flex flex-1 flex-col p-4">
+                  <p className="mb-1 text-sm font-semibold text-neutral-900 dark:text-neutral-100">
+                    {formatPrice(product.price)}
+                  </p>
+                  <Link href={`/product/${product.id}`} className="mb-2 block">
+                    <h2 className="line-clamp-2 min-h-[44px] text-sm font-semibold text-neutral-900 transition group-hover:underline dark:text-neutral-100">
                       {product.name}
                     </h2>
                   </Link>
                   {product.description && (
-                    <p className="text16 text-gray-500 line-clamp-2 mb-4 flex-1">
+                    <p className="mb-4 line-clamp-2 flex-1 text-sm text-neutral-500 dark:text-neutral-400">
                       {product.description}
                     </p>
                   )}
                   <button
+                    type="button"
                     onClick={() => void addToCart(product.id)}
-                    className="w-full border border-black py-1.5 text16 bg-white hover:bg-gray-100 mt-auto"
+                    className={`mt-auto w-full ${pageOutlineButton}`}
                   >
                     В корзину
                   </button>

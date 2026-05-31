@@ -17,6 +17,7 @@ from routers.catalog import router as catalog_router
 from routers.orders import router as orders_router
 from routers.site import router as site_router
 from routers.reviews import router as reviews_router
+from routers.promo import router as promo_router
 from routers.wishlist import router as wishlist_router
 from services import maintenance_service
 from settings import settings
@@ -82,3 +83,4 @@ app.include_router(orders_router)
 app.include_router(reviews_router)
 app.include_router(wishlist_router)
 app.include_router(ai_router)
+app.include_router(promo_router)

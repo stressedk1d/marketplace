@@ -5,6 +5,27 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Toast from "@/app/components/Toast";
+import EmptyState from "@/app/components/EmptyState";
+import { PageHero } from "@/app/components/PageHero";
+import { AdminCharts } from "@/app/components/AdminCharts";
+import { pageContent, pageCtaPrimary, pageShell, pageSummaryCard } from "@/lib/page-classes";
+import { pageOutlineButton, uiForm } from "@/lib/ui";
+import { formatDeliveryLines, parseOrderDelivery } from "@/lib/order-delivery";
+
+const ADMIN_PANEL =
+  "overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] dark:border-neutral-700 dark:bg-[var(--surface)] dark:ring-white/[0.06]";
+
+function adminTabClass(active: boolean) {
+  return active
+    ? "rounded-full bg-neutral-950 px-4 py-2 text-sm font-medium text-white dark:bg-white dark:text-neutral-950"
+    : "rounded-full border border-neutral-300 px-4 py-2 text-sm text-neutral-700 transition hover:bg-neutral-50 dark:border-neutral-600 dark:text-neutral-300 dark:hover:bg-neutral-800";
+}
+
+const ADMIN_ACTION =
+  "rounded-full border border-neutral-300 px-2.5 py-1 text-xs transition hover:bg-neutral-950 hover:text-white disabled:opacity-50 dark:border-neutral-600 dark:hover:bg-white dark:hover:text-neutral-950";
+
+const ADMIN_ACTION_DANGER =
+  "rounded-full border border-red-300 px-2.5 py-1 text-xs text-red-600 transition hover:bg-red-600 hover:text-white disabled:opacity-50";
 
 type OrderStatus = "created" | "paid" | "shipped" | "delivered" | "cancelled";
 
@@ -39,6 +60,7 @@ interface AdminOrder {
   user_id: number;
   user_email: string | null;
   user_full_name: string | null;
+  comment?: string | null;
   items: OrderItem[];
 }
 
@@ -57,6 +79,26 @@ interface Brand {
   id: number;
   name: string;
   slug: string;
+}
+
+interface AdminReview {
+  id: number;
+  user_id: number;
+  user_name: string | null;
+  product_id: number;
+  rating: number;
+  text: string | null;
+  created_at: string | null;
+}
+
+interface EmailLog {
+  id: number;
+  order_id: number | null;
+  to_email: string;
+  subject: string;
+  body_preview: string;
+  sent: boolean;
+  created_at: string | null;
 }
 
 const STATUS_LABELS: Record<OrderStatus, string> = {
@@ -97,11 +139,14 @@ export default function AdminPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
   const [users, setUsers] = useState<AdminUser[]>([]);
-  const [tab, setTab] = useState<"orders" | "users" | "products">("orders");
+  const [tab, setTab] = useState<"orders" | "users" | "products" | "reviews" | "email">("orders");
   const [toast, setToast] = useState("");
   const [toastType, setToastType] = useState<"success" | "error">("success");
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
+  const [reviews, setReviews] = useState<AdminReview[]>([]);
+  const [emailLogs, setEmailLogs] = useState<EmailLog[]>([]);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [showProductForm, setShowProductForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<AdminProduct | null>(null);
   const [productForm, setProductForm] = useState({
@@ -138,13 +183,15 @@ export default function AdminPage() {
         return;
       }
 
-      const [statsRes, ordersRes, usersRes, maintenanceRes, productsRes, brandsRes] = await Promise.all([
+      const [statsRes, ordersRes, usersRes, maintenanceRes, productsRes, brandsRes, reviewsRes, emailRes] = await Promise.all([
         apiFetch(apiUrl("/admin/stats"), { headers: authHeaders() }),
         apiFetch(apiUrl("/admin/orders?limit=100"), { headers: authHeaders() }),
         apiFetch(apiUrl("/admin/users?limit=100"), { headers: authHeaders() }),
         apiFetch(apiUrl("/admin/maintenance"), { headers: authHeaders() }),
         apiFetch(apiUrl("/products?limit=200&offset=0"), { headers: authHeaders() }),
         fetch(apiUrl("/brands")),
+        apiFetch(apiUrl("/admin/reviews?limit=100"), { headers: authHeaders() }),
+        apiFetch(apiUrl("/admin/email-logs"), { headers: authHeaders() }),
       ]);
 
       if (statsRes.ok) setStats(await statsRes.json());
@@ -161,6 +208,12 @@ export default function AdminPage() {
       }
       if (brandsRes.ok) {
         setBrands(await brandsRes.json());
+      }
+      if (reviewsRes.ok) {
+        setReviews(await reviewsRes.json());
+      }
+      if (emailRes.ok) {
+        setEmailLogs(await emailRes.json());
       }
     } catch (err: unknown) {
       if (err instanceof Error && err.message === "SESSION_EXPIRED") {
@@ -296,6 +349,49 @@ export default function AdminPage() {
     } catch { setToast("Ошибка сети"); setToastType("error"); }
   };
 
+  const deleteReview = async (reviewId: number) => {
+    if (!confirm("Удалить отзыв?")) return;
+    try {
+      const res = await apiFetch(apiUrl(`/admin/reviews/${reviewId}`), {
+        method: "DELETE",
+        headers: authHeaders(),
+      });
+      if (res.ok) {
+        setReviews((prev) => prev.filter((r) => r.id !== reviewId));
+        setToast("Отзыв удалён");
+        setToastType("success");
+      } else {
+        const data = await res.json();
+        setToast(data.detail || "Ошибка"); setToastType("error");
+      }
+    } catch { setToast("Ошибка сети"); setToastType("error"); }
+  };
+
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      const res = await apiFetch(apiUrl("/admin/upload-image"), {
+        method: "POST",
+        headers: authHeaders(),
+        body: formData,
+      });
+      const data = await res.json();
+      if (res.ok && data.url) {
+        setProductForm((prev) => ({ ...prev, image_url: data.url }));
+        setToast("Изображение загружено");
+        setToastType("success");
+      } else {
+        setToast(data.detail || "Ошибка загрузки"); setToastType("error");
+      }
+    } catch {
+      setToast("Ошибка сети"); setToastType("error");
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const startEditProduct = (p: AdminProduct) => {
     setEditingProduct(p);
     setProductForm({
@@ -310,39 +406,45 @@ export default function AdminPage() {
   };
 
   if (loading) {
-    return <p className="text-center mt-10 text20">Загрузка панели администратора...</p>;
+    return (
+      <div className={`${pageShell} flex items-center justify-center`}>
+        <p className="text-sm text-neutral-500">Загрузка панели администратора...</p>
+      </div>
+    );
   }
 
   if (forbidden) {
     return (
-      <div className="min-h-screen py-8">
-        <div className="container-main max-w-xl bg-white p-8 border border-black/20 text-center">
-          <h1 className="h32 mb-3">Доступ запрещён</h1>
-          <p className="text16 text-gray-600 mb-4">
-            Панель администратора доступна только пользователям из списка ADMIN_EMAILS.
-          </p>
-          <Link href="/" className="text16 underline">
-            На главную
-          </Link>
+      <div className={pageShell}>
+        <div className={`${pageContent} pt-8 sm:pt-10`}>
+          <EmptyState
+            icon="🔒"
+            title="Доступ запрещён"
+            description="Панель администратора доступна только пользователям из списка ADMIN_EMAILS."
+            actionLabel="На главную"
+            actionHref="/"
+          />
         </div>
-        </div>
+      </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-          <div>
-            <h1 className="h32">Админ-панель VogueWay</h1>
-            <p className="text16 text-gray-600 mt-1">
-              Управление заказами, товарами и пользователями
-            </p>
-          </div>
-          <Link href="/catalog" className="text16 underline">
-            В каталог
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
+        <PageHero
+          eyebrow="Admin"
+          title="Админ-панель"
+          description="Управление заказами, товарами, пользователями и настройками площадки."
+          variant="light"
+        >
+          <Link
+            href="/catalog"
+            className="inline-flex items-center rounded-full border border-neutral-300 px-4 py-2 text-sm font-medium transition hover:bg-neutral-50 dark:border-neutral-600 dark:hover:bg-neutral-800"
+          >
+            В каталог →
           </Link>
-        </div>
+        </PageHero>
 
         {toast && (
           <div className="mb-4">
@@ -350,11 +452,11 @@ export default function AdminPage() {
           </div>
         )}
 
-        <div className="bg-white border border-black/20 p-5 mb-8">
-          <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-4">
+        <div className={`${pageSummaryCard} mb-8`}>
+          <div className="mb-4 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div>
-              <h2 className="text20 font-semibold">Технические работы</h2>
-              <p className="text16 text-gray-600 mt-1">
+              <h2 className="text-base font-semibold">Технические работы</h2>
+              <p className="mt-1 text-sm text-neutral-600 dark:text-neutral-400">
                 {maintenanceEnabled
                   ? "Сайт закрыт для посетителей. Админ-панель доступна."
                   : "Сайт открыт для всех пользователей."}
@@ -364,11 +466,7 @@ export default function AdminPage() {
               type="button"
               disabled={maintenanceSaving}
               onClick={toggleMaintenance}
-              className={`px-5 py-2 text16 border whitespace-nowrap disabled:opacity-50 ${
-                maintenanceEnabled
-                  ? "bg-[var(--accent-soft)] border-black text-black"
-                  : "bg-black text-white border-black"
-              }`}
+              className={`${maintenanceEnabled ? pageOutlineButton : pageCtaPrimary} !w-auto shrink-0 whitespace-nowrap !min-h-[44px] px-5 !text-sm disabled:opacity-50`}
             >
               {maintenanceSaving
                 ? "Сохранение…"
@@ -377,68 +475,64 @@ export default function AdminPage() {
                   : "Включить техработы"}
             </button>
           </div>
-          <label className="block text16 mb-2">Сообщение для посетителей</label>
+          <label className={uiForm.label}>Сообщение для посетителей</label>
           <textarea
             value={maintenanceMessage}
             onChange={(e) => setMaintenanceMessage(e.target.value)}
             rows={3}
-            className="w-full border border-black/30 p-3 text16 bg-[#fafafa] resize-y"
+            className={`${uiForm.input} resize-y`}
             placeholder="Текст на экране техработ…"
           />
         </div>
 
         {stats && (
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white border border-black/20 p-4">
-              <p className="text14 text-gray-500">Пользователи</p>
-              <p className="text24 font-semibold mt-1">{stats.users_count}</p>
+            <div className={`${pageSummaryCard} !p-4`}>
+              <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Пользователи</p>
+              <p className="mt-1 text-2xl font-bold">{stats.users_count}</p>
             </div>
-            <div className="bg-white border border-black/20 p-4">
-              <p className="text14 text-gray-500">Товары</p>
-              <p className="text24 font-semibold mt-1">{stats.products_count}</p>
+            <div className={`${pageSummaryCard} !p-4`}>
+              <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Товары</p>
+              <p className="mt-1 text-2xl font-bold">{stats.products_count}</p>
             </div>
-            <div className="bg-white border border-black/20 p-4">
-              <p className="text14 text-gray-500">Заказы</p>
-              <p className="text24 font-semibold mt-1">{stats.orders_count}</p>
+            <div className={`${pageSummaryCard} !p-4`}>
+              <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Заказы</p>
+              <p className="mt-1 text-2xl font-bold">{stats.orders_count}</p>
             </div>
-            <div className="bg-white border border-black/20 p-4">
-              <p className="text14 text-gray-500">Выручка</p>
-              <p className="text24 font-semibold mt-1">{formatMoney(stats.revenue_total)}</p>
+            <div className={`${pageSummaryCard} !p-4`}>
+              <p className="text-xs font-medium uppercase tracking-wider text-neutral-500">Выручка</p>
+              <p className="mt-1 text-2xl font-bold">{formatMoney(stats.revenue_total)}</p>
             </div>
           </div>
         )}
 
-        <div className="flex gap-2 mb-6">
-          <button
-            type="button"
-            onClick={() => setTab("orders")}
-            className={`px-4 py-2 text16 border ${tab === "orders" ? "bg-black text-white border-black" : "bg-white border-black/30"}`}
-          >
+        <AdminCharts />
+
+        <div className="mb-6 flex flex-wrap gap-2">
+          <button type="button" onClick={() => setTab("orders")} className={adminTabClass(tab === "orders")}>
             Заказы ({orders.length})
           </button>
-          <button
-            type="button"
-            onClick={() => setTab("users")}
-            className={`px-4 py-2 text16 border ${tab === "users" ? "bg-black text-white border-black" : "bg-white border-black/30"}`}
-          >
+          <button type="button" onClick={() => setTab("users")} className={adminTabClass(tab === "users")}>
             Пользователи ({users.length})
           </button>
-          <button
-            type="button"
-            onClick={() => setTab("products")}
-            className={`px-4 py-2 text16 border ${tab === "products" ? "bg-black text-white border-black" : "bg-white border-black/30"}`}
-          >
+          <button type="button" onClick={() => setTab("products")} className={adminTabClass(tab === "products")}>
             Товары ({products.length})
+          </button>
+          <button type="button" onClick={() => setTab("reviews")} className={adminTabClass(tab === "reviews")}>
+            Отзывы ({reviews.length})
+          </button>
+          <button type="button" onClick={() => setTab("email")} className={adminTabClass(tab === "email")}>
+            Email ({emailLogs.length})
           </button>
         </div>
 
         {tab === "orders" && (
-          <div className="bg-white border border-black/20 overflow-x-auto">
+          <div className={`${ADMIN_PANEL} overflow-x-auto`}>
             {orders.length === 0 ? (
               <p className="p-6 text16 text-gray-500">Заказов пока нет</p>
             ) : (
               <table className="w-full text-left text16 min-w-[720px]">
-                <thead className="border-b border-black/10 bg-[#f9f9f9]">
+                <thead className="border-b border-neutral-200/80 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
                   <tr>
                     <th className="p-3 font-medium">№</th>
                     <th className="p-3 font-medium">Клиент</th>
@@ -460,6 +554,16 @@ export default function AdminPage() {
                             ? ` · ${new Date(order.created_at).toLocaleString("ru-RU")}`
                             : ""}
                         </p>
+                        {(() => {
+                          const delivery = parseOrderDelivery(order.comment);
+                          const lines = delivery ? formatDeliveryLines(delivery) : [];
+                          if (lines.length === 0) return null;
+                          return (
+                            <p className="text12 text-gray-500 mt-1 max-w-xs">
+                              {lines.join(" · ")}
+                            </p>
+                          );
+                        })()}
                       </td>
                       <td className="p-3 whitespace-nowrap">{formatMoney(order.total_amount)}</td>
                       <td className="p-3">{STATUS_LABELS[order.status]}</td>
@@ -471,7 +575,7 @@ export default function AdminPage() {
                               type="button"
                               disabled={updatingId === order.id}
                               onClick={() => updateOrderStatus(order.id, action.status)}
-                              className="text14 px-2 py-1 border border-black/30 hover:bg-black hover:text-white disabled:opacity-50"
+                              className={ADMIN_ACTION}
                             >
                               {action.label}
                             </button>
@@ -487,12 +591,12 @@ export default function AdminPage() {
         )}
 
         {tab === "users" && (
-          <div className="bg-white border border-black/20 overflow-x-auto">
+          <div className={`${ADMIN_PANEL} overflow-x-auto`}>
             {users.length === 0 ? (
               <p className="p-6 text16 text-gray-500">Пользователей нет</p>
             ) : (
               <table className="w-full text-left text16 min-w-[560px]">
-                <thead className="border-b border-black/10 bg-[#f9f9f9]">
+                <thead className="border-b border-neutral-200/80 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
                   <tr>
                     <th className="p-3 font-medium">ID</th>
                     <th className="p-3 font-medium">Email</th>
@@ -524,64 +628,78 @@ export default function AdminPage() {
                 setProductForm({ name: "", description: "", price: "", image_url: "", brand_id: "", product_type: "clothing" });
                 setShowProductForm(true);
               }}
-              className="px-5 py-2 text16 bg-black text-white border border-black hover:bg-gray-900"
+              className={`${pageCtaPrimary} !w-auto inline-flex !min-h-[44px] px-5 !text-sm`}
             >
               + Добавить товар
             </button>
 
             {showProductForm && (
-              <div className="bg-white border border-black/20 p-5">
-                <h3 className="text20 font-semibold mb-4">{editingProduct ? "Редактировать товар" : "Новый товар"}</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className={pageSummaryCard}>
+                <h3 className="mb-4 text-base font-semibold">{editingProduct ? "Редактировать товар" : "Новый товар"}</h3>
+                <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                   <div>
-                    <label className="block text16 mb-1">Название *</label>
-                    <input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className="w-full border border-black/30 p-2 text16" required />
+                    <label className={uiForm.label}>Название *</label>
+                    <input value={productForm.name} onChange={e => setProductForm({...productForm, name: e.target.value})} className={uiForm.input} required />
                   </div>
                   <div>
-                    <label className="block text16 mb-1">Цена *</label>
-                    <input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className="w-full border border-black/30 p-2 text16" required />
+                    <label className={uiForm.label}>Цена *</label>
+                    <input type="number" value={productForm.price} onChange={e => setProductForm({...productForm, price: e.target.value})} className={uiForm.input} required />
                   </div>
                   <div>
-                    <label className="block text16 mb-1">URL изображения</label>
-                    <input value={productForm.image_url} onChange={e => setProductForm({...productForm, image_url: e.target.value})} className="w-full border border-black/30 p-2 text16" />
+                    <label className={uiForm.label}>URL изображения</label>
+                    <input value={productForm.image_url} onChange={e => setProductForm({...productForm, image_url: e.target.value})} className={uiForm.input} />
+                    <div className="mt-2">
+                      <label className="block text14 text-gray-500 mb-1">Загрузить файл</label>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        disabled={uploadingImage}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void handleImageUpload(file);
+                        }}
+                        className="w-full text14"
+                      />
+                      {uploadingImage && <p className="text14 text-gray-400 mt-1">Загрузка...</p>}
+                    </div>
                   </div>
                   <div>
-                    <label className="block text16 mb-1">Бренд</label>
-                    <select value={productForm.brand_id} onChange={e => setProductForm({...productForm, brand_id: e.target.value})} className="w-full border border-black/30 p-2 text16">
+                    <label className={uiForm.label}>Бренд</label>
+                    <select value={productForm.brand_id} onChange={e => setProductForm({...productForm, brand_id: e.target.value})} className={uiForm.input}>
                       <option value="">Без бренда</option>
                       {brands.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="block text16 mb-1">Тип</label>
-                    <select value={productForm.product_type} onChange={e => setProductForm({...productForm, product_type: e.target.value})} className="w-full border border-black/30 p-2 text16">
+                    <label className={uiForm.label}>Тип</label>
+                    <select value={productForm.product_type} onChange={e => setProductForm({...productForm, product_type: e.target.value})} className={uiForm.input}>
                       <option value="clothing">Одежда</option>
                       <option value="shoes">Обувь</option>
                       <option value="accessories">Аксессуары</option>
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text16 mb-1">Описание</label>
-                    <textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} rows={3} className="w-full border border-black/30 p-2 text16 resize-y" />
+                    <label className={uiForm.label}>Описание</label>
+                    <textarea value={productForm.description} onChange={e => setProductForm({...productForm, description: e.target.value})} rows={3} className={`${uiForm.input} resize-y`} />
                   </div>
                 </div>
-                <div className="flex gap-3 mt-4">
-                  <button type="button" onClick={saveProduct} className="px-5 py-2 text16 bg-black text-white border border-black hover:bg-gray-900">
+                <div className="mt-4 flex gap-3">
+                  <button type="button" onClick={saveProduct} className={`${pageCtaPrimary} !w-auto !min-h-[44px] px-5 !text-sm`}>
                     {editingProduct ? "Сохранить" : "Создать"}
                   </button>
-                  <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className="px-5 py-2 text16 border border-black bg-white hover:bg-gray-100">
+                  <button type="button" onClick={() => { setShowProductForm(false); setEditingProduct(null); }} className={`${pageOutlineButton} !w-auto !min-h-[44px] px-5 !text-sm`}>
                     Отмена
                   </button>
                 </div>
               </div>
             )}
 
-            <div className="bg-white border border-black/20 overflow-x-auto">
+            <div className={`${ADMIN_PANEL} overflow-x-auto`}>
               {products.length === 0 ? (
                 <p className="p-6 text16 text-gray-500">Товаров нет</p>
               ) : (
                 <table className="w-full text-left text16 min-w-[720px]">
-                  <thead className="border-b border-black/10 bg-[#f9f9f9]">
+                  <thead className="border-b border-neutral-200/80 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
                     <tr>
                       <th className="p-3 font-medium">ID</th>
                       <th className="p-3 font-medium">Название</th>
@@ -599,8 +717,8 @@ export default function AdminPage() {
                         <td className="p-3">{p.product_type}</td>
                         <td className="p-3">
                           <div className="flex gap-2">
-                            <button type="button" onClick={() => startEditProduct(p)} className="text14 px-2 py-1 border border-black/30 hover:bg-black hover:text-white">Изменить</button>
-                            <button type="button" onClick={() => deleteProduct(p.id)} className="text14 px-2 py-1 border border-red-300 text-red-600 hover:bg-red-600 hover:text-white">Удалить</button>
+                            <button type="button" onClick={() => startEditProduct(p)} className={ADMIN_ACTION}>Изменить</button>
+                            <button type="button" onClick={() => deleteProduct(p.id)} className={ADMIN_ACTION_DANGER}>Удалить</button>
                           </div>
                         </td>
                       </tr>
@@ -609,6 +727,82 @@ export default function AdminPage() {
                 </table>
               )}
             </div>
+          </div>
+        )}
+
+        {tab === "reviews" && (
+          <div className={`${ADMIN_PANEL} overflow-x-auto`}>
+            {reviews.length === 0 ? (
+              <p className="p-6 text16 text-gray-500">Отзывов нет</p>
+            ) : (
+              <table className="w-full text-left text16 min-w-[720px]">
+                <thead className="border-b border-neutral-200/80 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
+                  <tr>
+                    <th className="p-3 font-medium">ID</th>
+                    <th className="p-3 font-medium">Товар</th>
+                    <th className="p-3 font-medium">Автор</th>
+                    <th className="p-3 font-medium">Оценка</th>
+                    <th className="p-3 font-medium">Текст</th>
+                    <th className="p-3 font-medium">Действия</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {reviews.map((r) => (
+                    <tr key={r.id} className="border-b border-black/5 align-top">
+                      <td className="p-3">{r.id}</td>
+                      <td className="p-3">#{r.product_id}</td>
+                      <td className="p-3">{r.user_name ?? `User ${r.user_id}`}</td>
+                      <td className="p-3">{r.rating} ★</td>
+                      <td className="p-3 max-w-xs truncate">{r.text ?? "—"}</td>
+                      <td className="p-3">
+                        <button
+                          type="button"
+                          onClick={() => void deleteReview(r.id)}
+                          className={ADMIN_ACTION_DANGER}
+                        >
+                          Удалить
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        )}
+
+        {tab === "email" && (
+          <div className={`${ADMIN_PANEL} overflow-x-auto`}>
+            {emailLogs.length === 0 ? (
+              <p className="p-6 text16 text-gray-500">Логов email нет</p>
+            ) : (
+              <table className="w-full text-left text16 min-w-[800px]">
+                <thead className="border-b border-neutral-200/80 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900/40">
+                  <tr>
+                    <th className="p-3 font-medium">ID</th>
+                    <th className="p-3 font-medium">Кому</th>
+                    <th className="p-3 font-medium">Тема</th>
+                    <th className="p-3 font-medium">Статус</th>
+                    <th className="p-3 font-medium">Превью</th>
+                    <th className="p-3 font-medium">Дата</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {emailLogs.map((log) => (
+                    <tr key={log.id} className="border-b border-black/5 align-top">
+                      <td className="p-3">{log.id}</td>
+                      <td className="p-3">{log.to_email}</td>
+                      <td className="p-3">{log.subject}</td>
+                      <td className="p-3">{log.sent ? "Отправлено" : "Ошибка"}</td>
+                      <td className="p-3 max-w-xs truncate text14 text-gray-600">{log.body_preview}</td>
+                      <td className="p-3 whitespace-nowrap text14">
+                        {log.created_at ? new Date(log.created_at).toLocaleString("ru-RU") : "—"}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         )}
       </div>

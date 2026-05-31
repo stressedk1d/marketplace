@@ -1,24 +1,27 @@
 import Link from "next/link";
+import { pageCtaPrimary, pageShell } from "@/lib/page-classes";
+import { pageOutlineButton } from "@/lib/ui";
 
 export default function NotFound() {
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className={`${pageShell} flex items-center justify-center`}>
       <div className="container-main py-16 text-center">
-        <p className="text-8xl font-bold text-neutral-200 sm:text-9xl">404</p>
-        <h1 className="h32 mt-4">Страница не найдена</h1>
-        <p className="text18 mt-3 text-neutral-500">
+        <p className="text-8xl font-bold tracking-tighter text-neutral-200 sm:text-9xl dark:text-neutral-800">
+          404
+        </p>
+        <h1 className="mt-4 text-2xl font-bold tracking-tight text-neutral-900 dark:text-neutral-50">
+          Страница не найдена
+        </h1>
+        <p className="mt-3 text-base text-neutral-500 dark:text-neutral-400">
           К сожалению, запрашиваемая страница не существует или была перемещена.
         </p>
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-4">
-          <Link
-            href="/"
-            className="inline-block rounded-lg bg-neutral-900 px-6 py-3 text16 font-medium text-white transition hover:bg-neutral-700"
-          >
+        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+          <Link href="/" className={`${pageCtaPrimary} !w-auto inline-flex px-8`}>
             На главную
           </Link>
           <Link
             href="/catalog"
-            className="inline-block rounded-lg border border-neutral-300 bg-white px-6 py-3 text16 font-medium text-neutral-900 transition hover:bg-neutral-100"
+            className={`${pageOutlineButton} !w-auto inline-flex px-8`}
           >
             Каталог товаров
           </Link>

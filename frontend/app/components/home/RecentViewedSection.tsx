@@ -9,6 +9,13 @@ import {
   type RecentProductSnapshot,
 } from "@/lib/recently-viewed";
 import { apiUrl } from "@/lib/api";
+import { formatPrice } from "@/lib/format";
+import { publicImageSrc } from "@/lib/image-src";
+import {
+  homeProductCard,
+  homeProductImage,
+} from "@/lib/home-classes";
+import { HomeSectionHeader } from "./HomeSectionHeader";
 
 const PLACEHOLDER = "/images/catalog-demo/nike-01.svg";
 
@@ -37,12 +44,14 @@ export function RecentViewedSection() {
               name: string;
               price: number;
               image_url: string | null;
+              brand?: { slug: string } | null;
             };
             return {
               id: payload.id,
               name: payload.name,
               price: payload.price,
               image_url: payload.image_url,
+              brand_slug: payload.brand?.slug ?? null,
             } satisfies RecentProductSnapshot;
           } catch {
             return null;
@@ -50,7 +59,7 @@ export function RecentViewedSection() {
         })
       );
 
-      const valid = checked.filter((x): x is RecentProductSnapshot => x !== null);
+      const valid = checked.filter((x) => x !== null) as RecentProductSnapshot[];
       replaceRecentlyViewed(valid);
       if (!disposed) setItems(valid);
     };
@@ -71,25 +80,17 @@ export function RecentViewedSection() {
   if (items.length === 0) return null;
 
   return (
-    <section className="animate-home-soft space-y-8">
-      <div>
-        <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl">
-          Вы недавно смотрели
-        </h2>
-        <p className="mt-2 max-w-lg text-neutral-600">
-          Товары, которые вы недавно просматривали.
-        </p>
-      </div>
+    <section className="space-y-8">
+      <HomeSectionHeader
+        title="Вы недавно смотрели"
+        description="Товары, которые вы недавно просматривали."
+      />
       <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
         {items.map((p) => {
-          const src = p.image_url?.trim() || PLACEHOLDER;
+          const src = publicImageSrc(p.image_url?.trim() || PLACEHOLDER);
           return (
-            <Link
-              key={p.id}
-              href={`/product/${p.id}`}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm transition duration-300 hover:-translate-y-1 hover:border-neutral-300 hover:shadow-md"
-            >
-              <div className="relative h-52 w-full bg-neutral-200">
+            <Link key={p.id} href={`/product/${p.id}`} className={homeProductCard}>
+              <div className={homeProductImage}>
                 <Image
                   src={src}
                   alt={p.name}
@@ -100,11 +101,11 @@ export function RecentViewedSection() {
                 />
               </div>
               <div className="flex flex-1 flex-col p-4">
-                <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-neutral-900">
+                <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-semibold leading-snug text-neutral-900 dark:text-neutral-100">
                   {p.name}
                 </h3>
-                <p className="mt-2 text-base font-semibold text-black">
-                  {Math.round(p.price)} ₽
+                <p className="mt-2 text-base font-semibold text-black dark:text-white">
+                  {formatPrice(p.price)}
                 </p>
               </div>
             </Link>

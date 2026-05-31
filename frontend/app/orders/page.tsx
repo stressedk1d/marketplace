@@ -6,7 +6,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { apiUrl, apiFetch } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
-import Toast from "@/app/components/Toast";
+import CheckoutSteps from "@/app/components/CheckoutSteps";
+import EmptyState from "@/app/components/EmptyState";
+import { PageHero } from "@/app/components/PageHero";
+import { OrdersPageSkeleton } from "@/app/components/ProductGridSkeleton";
+import { formatPrice } from "@/lib/format";
+import { publicImageSrc } from "@/lib/image-src";
+import OrderStatusTimeline from "@/app/components/OrderStatusTimeline";
+import { pageContent, pageShell } from "@/lib/page-classes";
+import { formatDeliveryLines, parseOrderDelivery } from "@/lib/order-delivery";
 
 type OrderStatus = "created" | "paid" | "shipped" | "delivered" | "cancelled";
 
@@ -17,12 +25,16 @@ interface OrderItem {
   image_url: string | null;
   quantity: number;
   price_at_purchase: number;
+  size?: string;
 }
 
 interface Order {
   id: number;
   status: OrderStatus;
   total_amount: number;
+  discount_amount?: number;
+  promo_code?: string | null;
+  comment?: string | null;
   created_at: string | null;
   items: OrderItem[];
 }
@@ -35,42 +47,19 @@ const STATUS_LABELS: Record<OrderStatus, string> = {
   cancelled: "Отменён",
 };
 
-const PIPELINE: OrderStatus[] = ["created", "paid", "shipped", "delivered"];
-
-function StatusProgress({ status }: { status: OrderStatus }) {
-  if (status === "cancelled") {
-    return (
-      <p className="text-red-700 text16 font-medium mt-1">Заказ отменён</p>
-    );
-  }
-  const activeIdx = PIPELINE.indexOf(status);
-  return (
-    <div className="flex flex-wrap items-center gap-1 sm:gap-2 mt-2" aria-label="Этапы заказа">
-      {PIPELINE.map((step, i) => (
-        <span key={step} className="flex items-center gap-1 sm:gap-2">
-          {i > 0 && <span className="text-gray-400 text16 hidden sm:inline">—</span>}
-          <span
-            className={`text14 sm:text16 px-2 py-1 border whitespace-nowrap ${
-              i <= activeIdx
-                ? "border-black bg-black text-white"
-                : "border-gray-300 text-gray-400 bg-white"
-            }`}
-          >
-            {STATUS_LABELS[step]}
-          </span>
-        </span>
-      ))}
-    </div>
-  );
-}
+const STATUS_BADGE: Record<OrderStatus, string> = {
+  created: "bg-blue-100 text-blue-800 dark:bg-blue-950/50 dark:text-blue-300",
+  paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300",
+  shipped: "bg-amber-100 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300",
+  delivered: "bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200",
+  cancelled: "bg-red-100 text-red-800 dark:bg-red-950/50 dark:text-red-300",
+};
 
 export default function OrdersPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [toast, setToast] = useState("");
-  const [toastType, setToastType] = useState<"success" | "error">("success");
   const [authMissing, setAuthMissing] = useState(false);
 
   const fetchOrders = useCallback(async () => {
@@ -105,93 +94,131 @@ export default function OrdersPage() {
     void fetchOrders();
   }, [fetchOrders]);
 
-  if (loading) {
-    return (
-      <div className="text-center mt-10 text20">Загрузка заказов...</div>
-    );
-  }
+  if (loading) return <OrdersPageSkeleton />;
 
   if (authMissing) {
     return (
-      <div className="min-h-screen py-8">
-        <div className="container-main max-w-3xl bg-white p-8 border border-black/20 text-center">
-          <h1 className="h32 mb-3">История заказов</h1>
-          <p className="text20 mb-4">
-            Для просмотра заказов нужно войти в аккаунт.
-          </p>
-          <Link href="/login" className="text20 underline">
-            Перейти ко входу
-          </Link>
+      <div className={pageShell}>
+        <div className={`${pageContent} pt-8 sm:pt-10`}>
+          <PageHero
+            eyebrow="Orders"
+            title="Мои заказы"
+            description="Войдите в аккаунт, чтобы видеть историю покупок и статус доставки."
+            variant="light"
+          />
+          <div className="mx-auto max-w-md rounded-2xl border border-neutral-200/90 bg-white p-8 text-center shadow-lg dark:border-neutral-700 dark:bg-[var(--surface)]">
+            <Link
+              href="/login"
+              className="inline-flex min-h-[52px] w-full items-center justify-center rounded-full bg-neutral-950 px-6 text-base font-semibold text-white transition hover:bg-neutral-800 dark:bg-white dark:text-neutral-950 dark:hover:bg-neutral-200"
+            >
+              Войти в аккаунт
+            </Link>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-8">
-      <div className="container-main text-black">
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
         <Breadcrumbs items={[{ label: "Мои заказы" }]} />
-        <h1 className="h32 mb-6">Мои заказы</h1>
+        {orders.length > 0 && <CheckoutSteps current="done" />}
+
+        <PageHero
+          eyebrow="Orders"
+          title="Мои заказы"
+          description={
+            orders.length > 0
+              ? "Отслеживайте статус доставки и просматривайте состав каждого заказа."
+              : "Здесь появится история ваших покупок после первого заказа."
+          }
+          variant="light"
+        />
 
         {error && (
-          <div className="mb-4">
-            <Toast message={error} type="error" />
-          </div>
-        )}
-        {toast && (
-          <div className="mb-4">
-            <Toast message={toast} type={toastType} />
-          </div>
+          <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-center text-sm text-red-600 dark:border-red-800 dark:bg-red-950/40 dark:text-red-300">
+            {error}
+          </p>
         )}
 
-        {orders.length === 0 ? (
-          <div className="bg-white p-8 border border-black/20 text-center">
-            <p className="text20 mb-4">У вас пока нет заказов.</p>
-            <Link href="/catalog" className="text20 underline">
-              Перейти в каталог
-            </Link>
-          </div>
+        {orders.length === 0 && !error ? (
+          <EmptyState
+            icon="📦"
+            title="Заказов пока нет"
+            description="Оформите первый заказ — история появится здесь."
+            actionLabel="Перейти в каталог"
+            actionHref="/catalog"
+          />
         ) : (
           <div className="space-y-6">
-            {orders.map((order) => (
+            {orders.map((order) => {
+              const delivery = parseOrderDelivery(order.comment);
+              const deliveryLines = delivery ? formatDeliveryLines(delivery) : [];
+              return (
               <article
                 key={order.id}
-                className="bg-white border border-black/20"
+                className="overflow-hidden rounded-2xl border border-neutral-200/90 bg-white shadow-sm ring-1 ring-black/[0.04] dark:border-neutral-700 dark:bg-[var(--surface)] dark:ring-white/[0.06]"
               >
-                <div className="p-5 border-b border-black/10 flex flex-col gap-3">
-                  <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-2">
+                <div className="flex flex-col gap-4 border-b border-neutral-200/80 p-5 dark:border-neutral-700 sm:p-6">
+                  <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                     <div>
-                      <h2 className="text20 font-semibold">Заказ #{order.id}</h2>
-                      <p className="text16 text-gray-600">
+                      <div className="mb-2 flex flex-wrap items-center gap-2">
+                        <h2 className="text-lg font-semibold text-neutral-900 dark:text-neutral-50">
+                          Заказ #{order.id}
+                        </h2>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_BADGE[order.status]}`}
+                        >
+                          {STATUS_LABELS[order.status]}
+                        </span>
+                      </div>
+                      <p className="text-sm text-neutral-500 dark:text-neutral-400">
                         {order.created_at
                           ? new Date(order.created_at).toLocaleString("ru-RU")
                           : "Дата недоступна"}
                       </p>
-                      <p className="text16 mt-1">
-                        Текущий статус:{" "}
-                        <span className="font-semibold">
-                          {STATUS_LABELS[order.status]}
-                        </span>
-                      </p>
                     </div>
                     <div className="text-left md:text-right">
-                      <p className="h32 text-black">{order.total_amount} ₽</p>
+                      <p className="text-xl font-bold text-neutral-900 dark:text-neutral-50">
+                        {formatPrice(order.total_amount)}
+                      </p>
+                      {(order.discount_amount ?? 0) > 0 && (
+                        <p className="text-sm text-emerald-600 dark:text-emerald-400">
+                          Скидка: −{formatPrice(order.discount_amount!)}
+                          {order.promo_code ? ` (${order.promo_code})` : ""}
+                        </p>
+                      )}
                     </div>
                   </div>
 
-                  <StatusProgress status={order.status} />
+                  <OrderStatusTimeline status={order.status} />
+
+                  {deliveryLines.length > 0 && (
+                    <div className="rounded-xl border border-neutral-200/80 bg-neutral-50/80 p-4 text-sm dark:border-neutral-700 dark:bg-neutral-900/40">
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">
+                        Доставка
+                      </p>
+                      {deliveryLines.map((line) => (
+                        <p key={line} className="text-neutral-700 dark:text-neutral-300">
+                          {line}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
-                <div className="p-5 space-y-4">
+
+                <div className="space-y-4 p-5 sm:p-6">
                   {order.items.map((item) => (
                     <div
                       key={item.id}
-                      className="flex items-center justify-between gap-4"
+                      className="flex items-center justify-between gap-4 rounded-xl border border-neutral-100 bg-neutral-50/50 p-3 dark:border-neutral-800 dark:bg-neutral-900/30"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="relative w-16 h-16 rounded-md overflow-hidden bg-gray-100 border">
+                        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-neutral-200 dark:bg-neutral-800">
                           {item.image_url && (
                             <Image
-                              src={item.image_url}
+                              src={publicImageSrc(item.image_url)}
                               alt={item.name ?? "Товар"}
                               fill
                               unoptimized
@@ -200,22 +227,24 @@ export default function OrdersPage() {
                           )}
                         </div>
                         <div>
-                          <p className="text20 font-semibold">
+                          <p className="font-semibold text-neutral-900 dark:text-neutral-100">
                             {item.name ?? "Товар удалён"}
                           </p>
-                          <p className="text16 text-black">
-                            {item.quantity} × {item.price_at_purchase} ₽
+                          <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                            {item.quantity} × {formatPrice(item.price_at_purchase)}
+                            {item.size ? ` · размер ${item.size}` : ""}
                           </p>
                         </div>
                       </div>
-                      <div className="text20 font-semibold text-black">
-                        {item.quantity * item.price_at_purchase} ₽
+                      <div className="shrink-0 font-semibold text-neutral-900 dark:text-neutral-100">
+                        {formatPrice(item.quantity * item.price_at_purchase)}
                       </div>
                     </div>
                   ))}
                 </div>
               </article>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>

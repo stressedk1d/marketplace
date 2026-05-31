@@ -2,6 +2,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { fetchBrands } from "@/lib/catalog-fetch";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+import { BrandGrid } from "@/app/components/BrandGrid";
+import { PageHero } from "@/app/components/PageHero";
+import { pageContent, pageShell } from "@/lib/page-classes";
 
 export const dynamic = "force-dynamic";
 
@@ -9,45 +12,16 @@ export default async function BrandsPage() {
   const brands = await fetchBrands();
 
   return (
-    <div className="min-h-screen py-10 text-black">
-      <div className="container-main">
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
         <Breadcrumbs items={[{ label: "Бренды" }]} />
-        <h1 className="h32 mb-2">Бренды</h1>
-        <p className="text16 text-gray-600 mb-10 max-w-2xl">
-          Выберите бренд, чтобы открыть его коллекции и товары.
-        </p>
-        {brands.length === 0 ? (
-          <p className="text16 text-gray-500">Бренды не найдены.</p>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-            {brands.map((b) => (
-              <Link
-                key={b.id}
-                href={`/brands/${b.slug}`}
-                className="border border-black/15 bg-white p-8 flex flex-col items-center text-center hover:border-black transition"
-              >
-                <div className="relative w-32 h-24 mb-5 bg-[#f8f8f8] rounded-xl overflow-hidden border border-black/10">
-                  {b.logo_url ? (
-                    <Image
-                      src={b.logo_url}
-                      alt={`Логотип ${b.name}`}
-                      fill
-                      unoptimized
-                      sizes="128px"
-                      className="object-contain p-2"
-                    />
-                  ) : (
-                    <span className="absolute inset-0 flex items-center justify-center text-3xl font-semibold text-gray-400">
-                      {b.name.slice(0, 1)}
-                    </span>
-                  )}
-                </div>
-                <h2 className="text20 font-semibold">{b.name}</h2>
-                <p className="text16 text-gray-500 mt-2">Перейти к коллекциям</p>
-              </Link>
-            ))}
-          </div>
-        )}
+        <PageHero
+          eyebrow="Партнёры"
+          title="Бренды"
+          description="Nike, Adidas, New Balance и другие — выберите бренд и откройте коллекции с актуальными товарами."
+          variant="light"
+        />
+        <BrandGrid brands={brands} hrefPrefix="/brands" emptyMessage="Бренды не найдены." />
       </div>
     </div>
   );

@@ -4,18 +4,24 @@ from sqlalchemy.orm import Session
 import models
 from database import get_db
 from deps import get_current_user
-from schemas import CheckoutResponse, OrderResponse, OrderStatusUpdate
+from schemas import CheckoutRequest, CheckoutResponse, OrderResponse, OrderStatusUpdate
 from services import orders_service
+from services.checkout_delivery import build_delivery_comment
 
 router = APIRouter(tags=["orders"])
 
 
 @router.post("/orders/checkout", response_model=CheckoutResponse)
 def checkout(
+    body: CheckoutRequest | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(get_current_user),
 ) -> CheckoutResponse:
-    return orders_service.checkout(current_user.id, db)
+    promo = body.promo_code if body else None
+    delivery = build_delivery_comment(body)
+    return orders_service.checkout(
+        current_user.id, db, promo_code=promo, delivery_comment=delivery
+    )
 
 
 @router.get("/orders/my", response_model=list[OrderResponse])

@@ -1,52 +1,42 @@
 import Link from "next/link";
 import { fetchFeaturedCollectionsRetail } from "@/lib/catalog-fetch";
+import {
+  homeCollectionCard,
+  homeEmptyState,
+} from "@/lib/home-classes";
+import { HomeSectionHeader } from "./HomeSectionHeader";
 
 export async function FeaturedCollectionsSection() {
   const collections = await fetchFeaturedCollectionsRetail();
 
   return (
-    <section className="animate-home-soft space-y-8">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h2 className="text-3xl font-semibold tracking-tight text-neutral-900 md:text-4xl">
-            Избранные коллекции
-          </h2>
-          <p className="mt-2 max-w-lg text-neutral-600">
-            Подборка актуальных линеек без мерча знаменитостей.
-          </p>
-        </div>
-        <Link
-          href="/catalog"
-          className="text-sm font-semibold text-neutral-900 underline-offset-4 transition hover:underline"
-        >
-          Полный каталог
-        </Link>
-      </div>
+    <section className="space-y-8">
+      <HomeSectionHeader
+        eyebrow="Коллекции"
+        title="Избранные коллекции"
+        description="Подборка актуальных линеек без мерча знаменитостей."
+        href="/catalog"
+        linkLabel="Полный каталог"
+      />
 
       {collections.length === 0 ? (
-        <p className="rounded-xl border border-dashed border-neutral-300 bg-white/60 px-6 py-10 text-center text-neutral-500">
-          Коллекции пока недоступны.
-        </p>
+        <p className={homeEmptyState}>Коллекции пока недоступны.</p>
       ) : (
         <div className="grid gap-6 md:grid-cols-2">
           {collections.map((c) => (
-            <Link
-              key={c.id}
-              href={`/collections/${c.slug}`}
-              className="group relative overflow-hidden rounded-2xl border border-neutral-200/90 bg-gradient-to-br from-white to-neutral-100 p-8 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:border-neutral-300 hover:shadow-md"
-            >
-              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 transition group-hover:text-neutral-700">
+            <Link key={c.id} href={`/collections/${c.slug}`} className={homeCollectionCard}>
+              <p className="text-xs font-semibold uppercase tracking-wider text-neutral-500 transition group-hover:text-neutral-700 dark:text-neutral-400 dark:group-hover:text-neutral-200">
                 {c.brand?.name ?? "Коллекция"}
               </p>
-              <h3 className="mt-2 text-2xl font-semibold text-neutral-900">
+              <h3 className="mt-2 text-2xl font-semibold text-neutral-900 dark:text-neutral-50">
                 {c.name}
               </h3>
               {c.description && (
-                <p className="mt-3 line-clamp-2 text-neutral-600">
+                <p className="mt-3 line-clamp-2 text-neutral-600 dark:text-neutral-400">
                   {c.description}
                 </p>
               )}
-              <span className="mt-6 inline-flex items-center text-sm font-semibold text-neutral-900 underline-offset-4 group-hover:underline">
+              <span className="mt-6 inline-flex items-center text-sm font-semibold text-neutral-900 underline-offset-4 group-hover:underline dark:text-neutral-200">
                 Смотреть товары
               </span>
             </Link>

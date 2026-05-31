@@ -5,6 +5,7 @@ export type RecentProductSnapshot = {
   name: string;
   price: number;
   image_url: string | null;
+  brand_slug?: string | null;
 };
 
 function parseList(raw: string | null): RecentProductSnapshot[] {

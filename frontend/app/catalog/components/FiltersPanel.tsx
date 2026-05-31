@@ -1,9 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ProductFacets } from "@/app/catalog/types";
 import { ui } from "@/app/catalog/ui/classes";
 import { tokens } from "@/app/catalog/ui/tokens";
+import { productTypeLabel, brandDisplayName } from "@/lib/labels";
+import { formatPrice } from "@/lib/format";
+import { apiUrl } from "@/lib/api";
+
+export interface CollectionOption {
+  id: number;
+  name: string;
+  slug: string;
+}
 
 interface FiltersPanelProps {
   searchDefaultValue: string;
@@ -13,20 +22,24 @@ interface FiltersPanelProps {
   minPrice: string;
   maxPrice: string;
   collectionId: string;
+  inStockOnly: boolean;
+  minRating: string;
   facets: ProductFacets;
   onSearchChange: (value: string) => void;
   onBrandChange: (slug: string) => void;
   onProductTypeChange: (value: string) => void;
-  onCollectionChange: (value: string) => void;
+  onCollectionChange: (id: string) => void;
   onMinPriceChange: (value: string) => void;
   onMaxPriceChange: (value: string) => void;
   onPriceRangePick: (min: string, max: string) => void;
+  onInStockOnlyChange: (value: boolean) => void;
+  onMinRatingChange: (value: string) => void;
   onReset: () => void;
 }
 
 function formatRange(max: number | null): string {
   if (max === null) return "и выше";
-  return `${max} ₽`;
+  return formatPrice(max);
 }
 
 export default function FiltersPanel({
@@ -37,6 +50,8 @@ export default function FiltersPanel({
   minPrice,
   maxPrice,
   collectionId,
+  inStockOnly,
+  minRating,
   facets,
   onSearchChange,
   onBrandChange,
@@ -45,36 +60,54 @@ export default function FiltersPanel({
   onMinPriceChange,
   onMaxPriceChange,
   onPriceRangePick,
+  onInStockOnlyChange,
+  onMinRatingChange,
   onReset,
 }: FiltersPanelProps) {
-  // UI governed by design system (tokens.ts + classes.ts)
   const [openSearch, setOpenSearch] = useState(true);
   const [openBrand, setOpenBrand] = useState(true);
   const [openType, setOpenType] = useState(true);
   const [openPrice, setOpenPrice] = useState(true);
+  const [openCollection, setOpenCollection] = useState(true);
+  const [openExtra, setOpenExtra] = useState(true);
+  const [allCollections, setAllCollections] = useState<CollectionOption[]>([]);
+
+  useEffect(() => {
+    const path = brandSlug
+      ? `/brands/${encodeURIComponent(brandSlug)}/collections`
+      : "/collections";
+    fetch(apiUrl(path))
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data) => {
+        setAllCollections(
+          Array.isArray(data)
+            ? data.map((c: CollectionOption) => ({
+                id: c.id,
+                name: c.name,
+                slug: c.slug,
+              }))
+            : []
+        );
+      })
+      .catch(() => setAllCollections([]));
+  }, [brandSlug]);
+
+  const visibleCollections = useMemo(() => allCollections, [allCollections]);
 
   const panelClass = ui.card.base;
   const sectionBtn =
     `flex w-full items-center justify-between ${tokens.radius.md} px-2 py-2 text-left text15 font-semibold ${ui.transition.base} ${tokens.color.hoverSubtle}`;
   const inputClass = ui.input.base;
 
-  const chips = [
-    brandSlug ? `Бренд: ${brandSlug}` : "",
-    productType ? `Тип: ${productType}` : "",
-    minPrice || maxPrice
-      ? `Цена: ${minPrice ? `от ${minPrice}` : "от 0"} ${maxPrice ? `до ${maxPrice}` : "и выше"}`
-      : "",
-  ].filter(Boolean);
-
   const sectionWrap = (open: boolean, active: boolean) =>
-    `${tokens.radius.lg} border p-2 ${ui.transition.base} ${
+    `${tokens.radius.lg} border p-2 transition-[border-color,background-color] duration-200 ${
       active
         ? `${tokens.color.borderHover} ${tokens.color.surfaceSubtle}`
         : `${tokens.color.borderDefault} ${tokens.color.surfaceBase}`
     } ${open ? "pb-2" : "pb-1"}`;
 
   const bodyClass = (open: boolean) =>
-    `grid overflow-hidden ${ui.transition.base} ${
+    `grid overflow-hidden transition-[grid-template-rows,opacity] duration-200 ease-out ${
       open ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0"
     }`;
 
@@ -90,37 +123,19 @@ export default function FiltersPanel({
           Сбросить
         </button>
       </div>
-      {chips.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {chips.map((chip) => (
-            <span
-              key={chip}
-              className={ui.chip.base}
-            >
-              {chip}
-            </span>
-          ))}
-        </div>
-      )}
 
-      <section className={sectionWrap(openSearch, Boolean(searchDefaultValue || collectionId))}>
+      <section className={sectionWrap(openSearch, Boolean(searchDefaultValue))}>
         <button type="button" className={sectionBtn} onClick={() => setOpenSearch((v) => !v)}>
           <span>Поиск</span>
           <span className="text-xs text-gray-400">{openSearch ? "−" : "+"}</span>
         </button>
         <div className={bodyClass(openSearch)}>
-          <div className="min-h-0 space-y-3 px-2 pb-2 pt-1">
+          <div className="min-h-0 px-2 pb-2 pt-1">
             <input
               key={searchInputKey}
               defaultValue={searchDefaultValue}
               onChange={(e) => onSearchChange(e.target.value)}
               placeholder="Название или описание"
-              className={inputClass}
-            />
-            <input
-              value={collectionId}
-              onChange={(e) => onCollectionChange(e.target.value)}
-              placeholder="Collection ID"
               className={inputClass}
             />
           </div>
@@ -140,19 +155,19 @@ export default function FiltersPanel({
                 type="button"
                 onClick={() => onBrandChange(brand.selected ? "" : brand.slug)}
                 className={`${ui.selectable.base} ${
-                  brand.selected
-                    ? ui.selectable.active
-                    : ui.selectable.idle
+                  brand.selected ? ui.selectable.active : ui.selectable.idle
                 }`}
               >
-                <span className="truncate">{brand.slug}</span>
+                <span className="truncate">{brandDisplayName(brand.slug, brand.name)}</span>
                 <span className="text12 opacity-80">{brand.count}</span>
               </button>
             ))}
           </div>
         </div>
         {brandSlug && !facets.brands.some((b) => b.slug === brandSlug) && (
-          <p className="px-2 pb-2 text12 text-gray-500">Выбранный бренд: {brandSlug}</p>
+          <p className="px-2 pb-2 text12 text-gray-500">
+            Выбранный бренд: {brandDisplayName(brandSlug)}
+          </p>
         )}
       </section>
 
@@ -169,21 +184,62 @@ export default function FiltersPanel({
                 type="button"
                 onClick={() => onProductTypeChange(type.selected ? "" : type.value)}
                 className={`${ui.selectable.base} ${
-                  type.selected
-                    ? ui.selectable.active
-                    : ui.selectable.idle
+                  type.selected ? ui.selectable.active : ui.selectable.idle
                 }`}
               >
-                <span>{type.value}</span>
+                <span>{productTypeLabel(type.value)}</span>
                 <span className="text12 opacity-80">{type.count}</span>
               </button>
             ))}
           </div>
         </div>
         {productType && !facets.product_types.some((t) => t.value === productType) && (
-          <p className="px-2 pb-2 text12 text-gray-500">Выбран тип: {productType}</p>
+          <p className="px-2 pb-2 text12 text-gray-500">
+            Выбран тип: {productTypeLabel(productType)}
+          </p>
         )}
       </section>
+
+      {visibleCollections.length > 0 && (
+        <section className={sectionWrap(openCollection, Boolean(collectionId))}>
+          <button
+            type="button"
+            className={sectionBtn}
+            onClick={() => setOpenCollection((v) => !v)}
+          >
+            <span>Коллекции</span>
+            <span className="text-xs text-gray-400">{openCollection ? "−" : "+"}</span>
+          </button>
+          <div className={bodyClass(openCollection)}>
+            <div className="flex max-h-48 min-h-0 flex-col gap-2 overflow-auto px-2 pb-2 pt-1">
+              <button
+                type="button"
+                onClick={() => onCollectionChange("")}
+                className={`${ui.selectable.base} ${
+                  !collectionId ? ui.selectable.active : ui.selectable.idle
+                }`}
+              >
+                <span>Все коллекции</span>
+              </button>
+              {visibleCollections.map((col) => {
+                const selected = collectionId === String(col.id);
+                return (
+                  <button
+                    key={col.id}
+                    type="button"
+                    onClick={() => onCollectionChange(selected ? "" : String(col.id))}
+                    className={`${ui.selectable.base} ${
+                      selected ? ui.selectable.active : ui.selectable.idle
+                    }`}
+                  >
+                    <span className="truncate text-left">{col.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className={sectionWrap(openPrice, Boolean(minPrice || maxPrice))}>
         <button type="button" className={sectionBtn} onClick={() => setOpenPrice((v) => !v)}>
@@ -222,18 +278,45 @@ export default function FiltersPanel({
                     )
                   }
                   className={`${ui.selectable.base} ${
-                    range.selected
-                      ? ui.selectable.active
-                      : ui.selectable.idle
+                    range.selected ? ui.selectable.active : ui.selectable.idle
                   }`}
                 >
                   <span>
-                    {range.min} ₽ - {formatRange(range.max)}
+                    {formatPrice(range.min)} – {formatRange(range.max)}
                   </span>
                   <span className="text12 opacity-80">{range.count}</span>
                 </button>
               ))}
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className={sectionWrap(openExtra, inStockOnly || Boolean(minRating))}>
+        <button type="button" className={sectionBtn} onClick={() => setOpenExtra((v) => !v)}>
+          <span>Наличие и рейтинг</span>
+          <span className="text-xs text-gray-400">{openExtra ? "−" : "+"}</span>
+        </button>
+        <div className={bodyClass(openExtra)}>
+          <div className="min-h-0 space-y-3 px-2 pb-2 pt-1">
+            <label className="flex cursor-pointer items-center gap-2 text15">
+              <input
+                type="checkbox"
+                checked={inStockOnly}
+                onChange={(e) => onInStockOnlyChange(e.target.checked)}
+                className="h-4 w-4 rounded border-black/30"
+              />
+              <span>Только в наличии</span>
+            </label>
+            <label className="flex cursor-pointer items-center gap-2 text15">
+              <input
+                type="checkbox"
+                checked={minRating === "4"}
+                onChange={(e) => onMinRatingChange(e.target.checked ? "4" : "")}
+                className="h-4 w-4 rounded border-black/30"
+              />
+              <span>Рейтинг 4+</span>
+            </label>
           </div>
         </div>
       </section>

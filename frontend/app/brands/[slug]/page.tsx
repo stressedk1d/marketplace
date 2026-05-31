@@ -2,9 +2,17 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { apiUrl } from "@/lib/api";
 import Breadcrumbs from "@/app/components/Breadcrumbs";
+import EmptyState from "@/app/components/EmptyState";
+import { PageHero } from "@/app/components/PageHero";
+import { SimplePageSkeleton } from "@/app/components/ProductGridSkeleton";
+import {
+  pageCollectionCard,
+  pageContent,
+  pageShell,
+} from "@/lib/page-classes";
 
 interface Collection {
   id: number;
@@ -22,7 +30,6 @@ interface BrandRow {
 
 export default function BrandCollectionsPage() {
   const params = useParams<{ slug: string }>();
-  const router = useRouter();
   const slug = Array.isArray(params.slug) ? params.slug[0] : params.slug;
   const [collections, setCollections] = useState<Collection[]>([]);
   const [brandName, setBrandName] = useState("");
@@ -52,62 +59,80 @@ export default function BrandCollectionsPage() {
         }
         return r.json();
       })
-      .then((d: Collection[]) =>
-        setCollections(Array.isArray(d) ? d : [])
-      )
+      .then((d: Collection[]) => setCollections(Array.isArray(d) ? d : []))
       .catch(() => setError("Ошибка загрузки"))
       .finally(() => setLoading(false));
   }, [slug]);
 
-  if (loading) {
-    return (
-      <div className="text-center mt-10 text20">Загрузка…</div>
-    );
-  }
+  if (loading) return <SimplePageSkeleton label="Загрузка коллекций" />;
 
   if (error) {
     return (
-      <div className="container-main py-10">
-        <p className="text20 mb-4">{error}</p>
-        <Link href="/brands" className="underline text16">
-          Все бренды
-        </Link>
+      <div className={pageShell}>
+        <div className={`${pageContent} pt-8 sm:pt-10`}>
+          <EmptyState
+            icon="?"
+            title={error}
+            description="Проверьте ссылку или вернитесь к списку брендов."
+            actionLabel="Все бренды"
+            actionHref="/brands"
+          />
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen py-10 text-black">
-      <div className="container-main">
-        <Breadcrumbs items={[
-          { label: "Бренды", href: "/brands" },
-          { label: brandName || slug },
-        ]} />
-        <h1 className="h32 mb-2">{brandName || slug}</h1>
-        <p className="text16 text-gray-600 mb-10">Коллекции бренда</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {collections.map((c) => (
-            <Link
-              key={c.id}
-              href={`/collections/${c.slug}`}
-              className="border border-black/15 bg-[#f3f3f3] p-6 hover:border-black transition block"
-            >
-              <h2 className="text20 font-semibold mb-2">{c.name}</h2>
-              {c.description && (
-                <p className="text16 text-gray-600 line-clamp-3">
-                  {c.description}
-                </p>
-              )}
-              {c.is_featured && (
-                <span className="inline-block mt-3 text14 px-2 py-0.5 border border-black/30">
-                  Избранное
-                </span>
-              )}
-            </Link>
-          ))}
-        </div>
-        {collections.length === 0 && (
-          <p className="text16 text-gray-500">Коллекций пока нет.</p>
+    <div className={pageShell}>
+      <div className={`${pageContent} pt-8 sm:pt-10`}>
+        <Breadcrumbs
+          items={[
+            { label: "Бренды", href: "/brands" },
+            { label: brandName || slug },
+          ]}
+        />
+
+        <PageHero
+          eyebrow="Brand"
+          title={brandName || slug}
+          description={
+            collections.length > 0
+              ? `${collections.length} ${collections.length === 1 ? "коллекция" : collections.length < 5 ? "коллекции" : "коллекций"} — выберите линейку и смотрите товары.`
+              : "Коллекции этого бренда скоро появятся в каталоге."
+          }
+          variant="light"
+        />
+
+        {collections.length === 0 ? (
+          <EmptyState
+            icon="◇"
+            title="Коллекций пока нет"
+            description="Загляните в каталог — там уже есть товары этого бренда."
+            actionLabel="В каталог"
+            actionHref={`/catalog?brand_slug=${slug}`}
+          />
+        ) : (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+            {collections.map((c) => (
+              <Link
+                key={c.id}
+                href={`/collections/${c.slug}`}
+                className={`${pageCollectionCard} block min-h-[140px]`}
+              >
+                <h2 className="mb-2 text-lg font-semibold">{c.name}</h2>
+                {c.description && (
+                  <p className="line-clamp-3 text-sm text-neutral-600 dark:text-neutral-400">
+                    {c.description}
+                  </p>
+                )}
+                {c.is_featured && (
+                  <span className="mt-3 inline-block rounded-full border border-neutral-300 px-2.5 py-0.5 text-xs font-medium dark:border-neutral-600">
+                    Избранное
+                  </span>
+                )}
+              </Link>
+            ))}
+          </div>
         )}
       </div>
     </div>

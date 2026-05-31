@@ -17,12 +17,12 @@ export const tokens = {
     baseAll: "transition-all duration-200 ease-out",
   },
   color: {
-    borderDefault: "border-black/10",
-    borderHover: "border-black/20",
-    textMuted: "text-gray-500",
-    surfaceBase: "bg-white",
-    surfaceSubtle: "bg-gray-50",
-    hoverSubtle: "hover:bg-gray-50",
+    borderDefault: "border-black/10 dark:border-white/15",
+    borderHover: "border-black/20 dark:border-white/25",
+    textMuted: "text-gray-500 dark:text-gray-400",
+    surfaceBase: "bg-white dark:bg-[var(--surface)]",
+    surfaceSubtle: "bg-gray-50 dark:bg-neutral-800",
+    hoverSubtle: "hover:bg-gray-50 dark:hover:bg-neutral-700",
   },
 } as const;
 

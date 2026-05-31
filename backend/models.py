@@ -41,6 +41,7 @@ class User(Base):
     full_name = Column(String)
     is_verified = Column(Boolean, default=False)
     is_admin = Column(Boolean, nullable=False, default=False)
+    loyalty_points = Column(Integer, nullable=False, default=0)
     verification_code = Column(String, nullable=True)
     code_expires_at = Column(DateTime, nullable=True)
 
@@ -121,6 +122,31 @@ class Product(Base):
             ProductImage.id.asc(),
         ),
     )
+    variants = relationship(
+        "ProductVariant",
+        back_populates="product",
+        cascade="all, delete-orphan",
+        order_by=lambda: ProductVariant.id.asc(),
+    )
+
+
+class ProductVariant(Base):
+    __tablename__ = "product_variants"
+    __table_args__ = (
+        UniqueConstraint("product_id", "size", name="uq_variant_product_size"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    product_id = Column(
+        Integer,
+        ForeignKey("products.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    size = Column(String(20), nullable=False)
+    stock = Column(Integer, nullable=False, default=0)
+
+    product = relationship("Product", back_populates="variants")
 
 
 class ProductImage(Base):
@@ -165,6 +191,7 @@ class CartItem(Base):
     user_id = Column(Integer, ForeignKey("users.id"))
     product_id = Column(Integer, ForeignKey("products.id"))
     quantity = Column(Integer, default=1)
+    size = Column(String(20), nullable=False, default="")
 
     user = relationship("User", back_populates="cart_items")
     product = relationship("Product")
@@ -180,6 +207,9 @@ class Order(Base):
         default=OrderStatus.created,
     )
     total_amount = Column(Float, default=0.0)
+    promo_code = Column(String(32), nullable=True)
+    discount_amount = Column(Float, nullable=False, default=0.0)
+    comment = Column(String, nullable=True)
     created_at = Column(DateTime, default=lambda: datetime.now(UTC))
 
     user = relationship("User", back_populates="orders")
@@ -193,9 +223,33 @@ class OrderItem(Base):
     product_id = Column(Integer, ForeignKey("products.id"), nullable=False)
     quantity = Column(Integer, default=1)
     price_at_purchase = Column(Float, nullable=False)
+    size = Column(String(20), nullable=False, default="")
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
+
+
+class PromoCode(Base):
+    __tablename__ = "promo_codes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(32), unique=True, nullable=False, index=True)
+    discount_percent = Column(Float, nullable=True)
+    discount_fixed = Column(Float, nullable=True)
+    min_order_amount = Column(Float, nullable=False, default=0.0)
+    is_active = Column(Boolean, nullable=False, default=True)
+
+
+class EmailLog(Base):
+    __tablename__ = "email_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=True, index=True)
+    to_email = Column(String, nullable=False)
+    subject = Column(String, nullable=False)
+    body_preview = Column(String, nullable=False)
+    sent = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, nullable=False, default=lambda: datetime.now(UTC))
 
 
 class Review(Base):

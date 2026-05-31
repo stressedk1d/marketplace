@@ -54,6 +54,24 @@ class ProfileUpdateRequest(BaseModel):
 class ProfileResponse(BaseModel):
     email: str
     full_name: str | None = None
+    loyalty_points: int = 0
+
+
+class CheckoutRequest(BaseModel):
+    full_name: str | None = None
+    phone: str | None = None
+    city: str | None = None
+    address: str | None = None
+    comment: str | None = None
+    pay_method: str | None = None
+    promo_code: str | None = None
+
+
+class PromoValidateResponse(BaseModel):
+    code: str | None
+    discount: float
+    subtotal: float
+    total: float
 
 
 # ── Catalog ───────────────────────────────────────────────────────────────────
@@ -97,6 +115,11 @@ class CollectionResponse(BaseModel):
     brand: Optional[BrandBrief] = None
 
 
+class ProductVariantResponse(BaseModel):
+    size: str
+    stock: int
+
+
 class ProductResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -113,10 +136,14 @@ class ProductResponse(BaseModel):
     product_type: str
     brand: Optional[BrandBrief] = None
     collection: Optional[CollectionBrief] = None
+    avg_rating: Optional[float] = None
+    review_count: int = 0
+    variants: list[ProductVariantResponse] = Field(default_factory=list)
 
 
 class FacetBrandCount(BaseModel):
     slug: str
+    name: str = ""
     count: int
     selected: bool = False
 
@@ -160,6 +187,7 @@ class ProductListResponse(BaseModel):
 class AddToCart(BaseModel):
     product_id: int
     quantity: int = 1
+    size: Optional[str] = None
 
 
 class UpdateCartQuantity(BaseModel):
@@ -173,6 +201,7 @@ class CartItemResponse(BaseModel):
     price: float
     quantity: int
     image_url: Optional[str] = None
+    size: str = ""
 
 
 # ── Orders ────────────────────────────────────────────────────────────────────
@@ -184,12 +213,16 @@ class OrderItemResponse(BaseModel):
     image_url: Optional[str] = None
     quantity: int
     price_at_purchase: float
+    size: str = ""
 
 
 class OrderResponse(BaseModel):
     id: int
     status: OrderStatus
     total_amount: float
+    discount_amount: float = 0
+    promo_code: Optional[str] = None
+    comment: Optional[str] = None
     created_at: Optional[str] = None
     items: list[OrderItemResponse] = []
 
@@ -198,7 +231,20 @@ class CheckoutResponse(BaseModel):
     order_id: int
     status: OrderStatus
     total_amount: float
+    discount_amount: float = 0
+    promo_code: Optional[str] = None
+    loyalty_points_earned: int = 0
     items_count: int
+
+
+class EmailLogResponse(BaseModel):
+    id: int
+    order_id: Optional[int] = None
+    to_email: str
+    subject: str
+    body_preview: str
+    sent: bool
+    created_at: Optional[str] = None
 
 
 class OrderStatusUpdate(BaseModel):
@@ -235,6 +281,22 @@ class AdminStatsResponse(BaseModel):
     products_count: int
     orders_count: int
     revenue_total: float
+
+
+class AdminAnalyticsDay(BaseModel):
+    date: str
+    orders_count: int
+    revenue: float
+
+
+class AdminStatusCount(BaseModel):
+    status: str
+    count: int
+
+
+class AdminAnalyticsResponse(BaseModel):
+    days: list[AdminAnalyticsDay]
+    orders_by_status: list[AdminStatusCount]
 
 
 class AdminUserResponse(BaseModel):

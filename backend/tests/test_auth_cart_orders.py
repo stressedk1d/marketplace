@@ -92,6 +92,19 @@ def test_checkout_success(db: Session, test_user: models.User, test_product: mod
     assert result.items_count == 1
 
 
+def test_checkout_saves_delivery_comment(
+    db: Session, test_user: models.User, test_product: models.Product
+):
+    cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
+    delivery = '{"full_name":"Иван","city":"Москва","address":"ул. Тест, 1"}'
+    result = orders_service.checkout(
+        test_user.id, db, delivery_comment=delivery
+    )
+    order = db.query(models.Order).filter(models.Order.id == result.order_id).first()
+    assert order is not None
+    assert order.comment == delivery
+
+
 def test_checkout_clears_cart(db: Session, test_user: models.User, test_product: models.Product):
     cart_service.add_to_cart(test_user.id, test_product.id, 1, db)
     orders_service.checkout(test_user.id, db)

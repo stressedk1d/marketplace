@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 import models
 from schemas import ReviewResponse
+from services.rate_limit import check_rate_limit
 
 
 def get_product_reviews(product_id: int, db: Session) -> list[ReviewResponse]:
@@ -28,6 +29,7 @@ def get_product_reviews(product_id: int, db: Session) -> list[ReviewResponse]:
 
 
 def create_review(user_id: int, product_id: int, rating: int, text: str | None, db: Session) -> ReviewResponse:
+    check_rate_limit(f"review:user:{user_id}", max_calls=5, window_sec=300)
     product = db.query(models.Product).filter(models.Product.id == product_id).first()
     if not product:
         raise HTTPException(status_code=404, detail="Товар не найден")

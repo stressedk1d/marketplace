@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session, joinedload
 import models
 from database import get_db
 from services.catalog_service import product_to_response
+from services.rate_limit import check_rate_limit
 from settings import settings
 
 
@@ -74,6 +75,9 @@ async def ai_photo_search(
             status_code=503,
             detail="ИИ-поиск отключён на этом сервере (DISABLE_AI_SEARCH=true).",
         )
+
+    client_ip = request.client.host if request.client else "unknown"
+    check_rate_limit(f"ai:{client_ip}", max_calls=15, window_sec=60)
 
     from sentence_transformers import util
 
